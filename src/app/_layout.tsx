@@ -1,8 +1,10 @@
+import "react-native-gesture-handler";
+import "../../global.css";
+
 import { useAuthStore } from "@/lib/authStore";
 import { theme } from "@/lib/ui/theme";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
-import "react-native-gesture-handler";
 import { PaperProvider } from "react-native-paper";
 import LoadingScreen from "./loading";
 

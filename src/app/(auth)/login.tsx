@@ -54,7 +54,7 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ScrollView
+        <ScrollView 
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: "center",

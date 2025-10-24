@@ -32,7 +32,6 @@ export default function MainDashboard() {
   const currentRole = profile?.role || "recycler";
 
   useEffect(() => {
-    // Load appropriate data based on role
     if (currentRole === "collector") {
       loadAllPickups();
     } else {
@@ -79,7 +78,6 @@ export default function MainDashboard() {
   );
 }
 
-// Modern Data-Focused Dashboard Component
 function RecyclerDashboard({
   user,
   pickups,
@@ -89,7 +87,6 @@ function RecyclerDashboard({
   refreshing,
   onRefresh,
 }: any) {
-  // For recyclers, pickups already contains only their pickups
   const myPickups = pickups;
   const pendingPickups = myPickups.filter(
     (pickup: any) => pickup.status === "requested"
@@ -158,7 +155,6 @@ function RecyclerDashboard({
         </View>
       </LinearGradient>
 
-      {/* Pending Pickups Overview */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Pending Pickups</Text>
         <Text style={styles.sectionSubtitle}>
@@ -227,7 +223,6 @@ function RecyclerDashboard({
         )}
       </View>
 
-      {/* Material Breakdown */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Material Breakdown</Text>
         <Text style={styles.sectionSubtitle}>
@@ -261,7 +256,6 @@ function RecyclerDashboard({
         </View>
       </View>
 
-      {/* Recent Activity */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Requests</Text>
@@ -425,7 +419,6 @@ function getMaterialBreakdown(pickups: any[]) {
   return Object.values(breakdown);
 }
 
-// Placeholder Collector Dashboard (keeping existing)
 function CollectorDashboard({
   user,
   pickups,
@@ -447,14 +440,14 @@ function CollectorDashboard({
     try {
       setBusyId(pickupId);
       const res = await markCollected(pickupId, {
-        coins_awarded: Math.floor(pickup.weight_kg * 10), // 10 coins per kg
+        coins_awarded: Math.floor(pickup.weight_kg * 10),
         collector_id: user?.id,
       });
       if (!res.ok) {
         Alert.alert("Failed", res.error ?? "Try again.");
       } else {
         Alert.alert("Success", "Pickup request accepted and collected!");
-        await loadAllPickups(); // Refresh data
+        await loadAllPickups();
       }
     } catch (error) {
       console.error("Exception in collector mark collected:", error);
@@ -546,7 +539,6 @@ function CollectorDashboard({
         </View>
       </LinearGradient>
 
-      {/* Pending Pickup Requests */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Available Pickup Requests</Text>
@@ -690,29 +682,39 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   welcomeText: {
-    fontSize: 16,
-    color: "rgba(255, 255, 255, 0.8)",
-    fontWeight: "500",
+    fontSize: 18,
+    color: "rgba(255, 255, 255, 0.95)",
+    fontWeight: "600",
+    letterSpacing: 0.5,
   },
   userName: {
-    fontSize: 24,
+    fontSize: 28,
     color: "white",
-    fontWeight: "bold",
+    fontWeight: "800",
     marginTop: 4,
+    letterSpacing: 0.3,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   coinsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
   coinsText: {
-    fontSize: 18,
-    color: "#FCD34D",
-    fontWeight: "bold",
+    fontSize: 20,
+    color: "#FBBF24",
+    fontWeight: "800",
     marginLeft: 8,
+    textShadowColor: "rgba(0, 0, 0, 0.5)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   statsRow: {
     flexDirection: "row",
@@ -722,14 +724,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: 28,
     color: "white",
-    fontWeight: "bold",
+    fontWeight: "800",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   statLabel: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.95)",
     marginTop: 4,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+    textShadowColor: "rgba(0, 0, 0, 0.2)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1,
   },
   section: {
     paddingHorizontal: 24,

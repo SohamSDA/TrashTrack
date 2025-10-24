@@ -1,13 +1,10 @@
-// src/lib/supabase.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import "react-native-url-polyfill/auto";
 
 // Web-compatible storage for Supabase
 const getStorage = () => {
-  // Check if we're running in web environment
   if (typeof window !== "undefined") {
-    // Use localStorage for web
     return {
       getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
       setItem: (key: string, value: string) =>
@@ -16,7 +13,6 @@ const getStorage = () => {
         Promise.resolve(localStorage.removeItem(key)),
     };
   }
-  // Use AsyncStorage for mobile
   return AsyncStorage;
 };
 
@@ -94,11 +90,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
     Please check your .env file and make sure both values are set.`);
 }
 
-/** Supabase client - web compatible (no persistence for demo) */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
-    persistSession: false, // Disable persistence for web compatibility
+    persistSession: false,
     detectSessionInUrl: false,
   },
 });

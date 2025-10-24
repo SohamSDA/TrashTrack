@@ -1,8 +1,6 @@
-// src/lib/auth.ts
 import { User } from "@supabase/supabase-js";
 import { Database, supabase } from "./supabase";
 
-/** Row type from the DB */
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 export type UserRole = "recycler" | "collector" | "admin";
 

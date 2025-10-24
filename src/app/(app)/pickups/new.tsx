@@ -1,10 +1,9 @@
-// src/app/(app)/pickups/new.tsx
-import { useState } from "react";
-import { Alert, View } from "react-native";
+import { useAuthStore } from "@/lib/authStore";
 import Slider from "@react-native-community/slider";
 import { router } from "expo-router";
+import { useState } from "react";
+import { Alert, View } from "react-native";
 import { Button, Card, SegmentedButtons, Text } from "react-native-paper";
-import { useAuthStore } from "@/lib/authStore";
 
 type MaterialCode = "paper" | "plastic" | "iron";
 
@@ -37,7 +36,10 @@ export default function NewPickup() {
     <View style={{ flex: 1, backgroundColor: "#f6f8f7", padding: 16, gap: 16 }}>
       <Card style={{ borderRadius: 16 }}>
         <Card.Content style={{ gap: 16 }}>
-          <Text variant="titleLarge" style={{ fontWeight: "bold", color: "#16a34a" }}>
+          <Text
+            variant="titleLarge"
+            style={{ fontWeight: "bold", color: "#16a34a" }}
+          >
             Schedule New Pickup
           </Text>
 

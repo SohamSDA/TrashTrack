@@ -19,18 +19,15 @@ export default function Profile() {
   const { user, profile, pickups, loadProfile, loadPickups, signOut } =
     useAuthStore();
 
-  // local edit state
   const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState(profile?.full_name || "");
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [saving, setSaving] = useState(false);
 
-  // entrance animation (kept)
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
-    // ensure fresh data
     (async () => {
       await Promise.all([loadProfile(), loadPickups()]);
       setFullName((prev) => profile?.full_name ?? prev ?? "");
@@ -49,18 +46,20 @@ export default function Profile() {
         useNativeDriver: true,
       }),
     ]).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    // keep inputs in sync if profile updates
     setFullName(profile?.full_name || "");
     setAvatarUrl(profile?.avatar_url || "");
   }, [profile?.full_name, profile?.avatar_url]);
 
   // derived stats
-  const completed = pickups.filter((p) => p.status === "collected").length;
-  const pending = pickups.filter((p) => p.status === "requested").length;
+  const completed = (pickups || []).filter(
+    (p) => p.status === "collected"
+  ).length;
+  const pending = (pickups || []).filter(
+    (p) => p.status === "requested"
+  ).length;
 
   const handleSave = async () => {
     if (!user) return;
@@ -101,7 +100,6 @@ export default function Profile() {
           gap: 16,
         }}
       >
-        {/* Header */}
         <Card style={{ borderRadius: 20, overflow: "hidden" }}>
           <Card.Content
             style={{ alignItems: "center", gap: 16, paddingVertical: 24 }}
@@ -113,21 +111,18 @@ export default function Profile() {
             )}
             <View style={{ alignItems: "center" }}>
               <Text variant="headlineMedium" style={{ fontWeight: "bold" }}>
-                {profile?.full_name || user?.email || "Recycler"}
+                {profile?.full_name || user?.email || "User Profile"}
               </Text>
-              {!!user?.email && (
-                <Text
-                  variant="bodyLarge"
-                  style={{ color: "#6b7280", marginTop: 4 }}
-                >
-                  {user.email}
-                </Text>
-              )}
+              <Text
+                variant="bodyLarge"
+                style={{ color: "#6b7280", marginTop: 4 }}
+              >
+                {user?.email || "Loading..."}
+              </Text>
             </View>
           </Card.Content>
         </Card>
 
-        {/* Enhanced Stats */}
         <View style={{ flexDirection: "row", gap: 12 }}>
           <Card style={{ flex: 1, borderRadius: 16 }}>
             <Card.Content style={{ alignItems: "center", paddingVertical: 20 }}>
@@ -168,7 +163,6 @@ export default function Profile() {
           </Card>
         </View>
 
-        {/* Additional User Information */}
         <Card style={{ borderRadius: 16 }}>
           <Card.Content>
             <View
@@ -209,7 +203,7 @@ export default function Profile() {
                   variant="bodyMedium"
                   style={{ fontWeight: "600", textTransform: "capitalize" }}
                 >
-                  {profile?.role || "Recycler"}
+                  {profile?.role || "Loading..."}
                 </Text>
               </View>
 
@@ -255,11 +249,11 @@ export default function Profile() {
                   Total Requests:
                 </Text>
                 <Text variant="bodyMedium" style={{ fontWeight: "600" }}>
-                  {pickups.length}
+                  {(pickups || []).length}
                 </Text>
               </View>
 
-              {pickups.length > 0 && (
+              {(pickups || []).length > 0 && (
                 <View
                   style={{
                     flexDirection: "row",
@@ -276,7 +270,7 @@ export default function Profile() {
                     Total Weight:
                   </Text>
                   <Text variant="bodyMedium" style={{ fontWeight: "600" }}>
-                    {pickups
+                    {(pickups || [])
                       .reduce((sum, p) => sum + p.weight_kg, 0)
                       .toFixed(1)}{" "}
                     kg
@@ -287,7 +281,6 @@ export default function Profile() {
           </Card.Content>
         </Card>
 
-        {/* Profile Settings (real edit only) */}
         <Card style={{ borderRadius: 16 }}>
           <Card.Content>
             <View
@@ -378,7 +371,6 @@ export default function Profile() {
           </Card.Content>
         </Card>
 
-        {/* Sign Out Section */}
         <Card style={{ borderRadius: 16 }}>
           <Card.Content>
             <View
@@ -440,7 +432,6 @@ export default function Profile() {
         </Card>
       </Animated.View>
 
-      {/* Bottom spacing */}
       <View style={{ height: 32 }} />
     </ScrollView>
   );

@@ -1,10 +1,8 @@
-// src/lib/authStore.ts
 import { User } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { authService, Profile } from "./auth";
 import { supabase } from "./supabase";
 
-// Simplified types for college project - pragmatic approach
 export type AppPickup = {
   id: number;
   user_id: string;
@@ -18,14 +16,12 @@ export type AppPickup = {
 };
 
 type AuthState = {
-  // auth + domain
   user: User | null;
   profile: Profile | null;
   loading: boolean;
 
   pickups: AppPickup[];
 
-  // Auth actions
   signIn: (email: string, password: string) => Promise<{ error?: any }>;
   signUp: (
     email: string,
@@ -37,7 +33,6 @@ type AuthState = {
   initialize: () => Promise<void>;
   loadProfile: () => Promise<void>;
 
-  // Pickup actions (for both recycler and collector)
   requestPickup: (
     materialCode: string,
     weightKg: number
@@ -48,14 +43,12 @@ type AuthState = {
     opts?: { coins_awarded?: number | null; collector_id?: string | null }
   ) => Promise<{ ok: boolean; error?: string }>;
 
-  // Collector actions (for future dashboard)
   loadAllPickups: () => Promise<void>;
   assignPickup: (
     pickupId: number,
     collectorId: string
   ) => Promise<{ ok: boolean; error?: string }>;
 
-  // Coin system
   updateUserCoins: (
     userId: string,
     coinsToAdd: number
@@ -79,7 +72,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { data, error } = await authService.signIn(email, password);
     if (!error && data.user) {
       set({ user: data.user });
-      // Load profile first, then pickups (sequential to avoid race conditions)
       await get().loadProfile();
       await get().loadPickups();
     }
