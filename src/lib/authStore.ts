@@ -287,21 +287,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  // ---------- Collector Functions (for future dashboard) ----------
+  // ---------- Collector Functions ----------
   loadAllPickups: async () => {
     try {
-      const { data, error } = await supabase
-        .from("pickups")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error loading all pickups:", error);
+      const { user } = get();
+      if (!user) {
+        console.error("No user found for loadAllPickups");
         return;
       }
 
-      // For now, just store in same pickups array
-      // Later can separate into userPickups vs allPickups
+      // For collectors, only load:
+      // 1. Available pickups (status = 'requested', no collector assigned)
+      // 2. Pickups they have collected (collector_id = their id)
+      const { data, error } = await supabase
+        .from("pickups")
+        .select("*")
+        .or(
+          `and(status.eq.requested,collector_id.is.null),and(status.eq.collected,collector_id.eq.${user.id})`
+        )
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error loading collector-specific pickups:", error);
+        return;
+      }
+
+      // Transform the data
       const pickups = ((data as any[]) || []).map(
         (p: any): AppPickup => ({
           id: p.id,
@@ -320,8 +331,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       );
 
       set({ pickups });
+      console.log(
+        `Loaded ${pickups.length} collector-specific pickups for user ${user.id}`
+      );
     } catch (err: any) {
-      console.error("Error loading all pickups:", err);
+      console.error("Error loading collector-specific pickups:", err);
     }
   },
 

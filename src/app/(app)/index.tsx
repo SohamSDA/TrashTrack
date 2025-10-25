@@ -448,9 +448,8 @@ function getMaterialBreakdown(pickups: any[]) {
 function CollectorDashboard({
   user,
   pickups,
-  assignPickup,
+
   loadAllPickups,
-  updateUserCoins,
   markCollected,
   signOut,
   refreshing,
@@ -458,9 +457,32 @@ function CollectorDashboard({
 }: any) {
   const [busyId, setBusyId] = React.useState<number | null>(null);
 
-  // Filter pickups by status
-  const requestedPickups = pickups.filter((p: any) => p.status === "requested");
-  const collectedPickups = pickups.filter((p: any) => p.status === "collected");
+  // Filter pickups for this specific collector
+  // Available pickups: status = 'requested' (no collector assigned yet)
+  const requestedPickups = pickups.filter(
+    (p: any) => p.status === "requested" && !p.collector_id
+  );
+
+  // Collected pickups: status = 'collected' AND collector_id = current user
+  const collectedPickups = pickups.filter(
+    (p: any) => p.status === "collected" && p.collector_id === user?.id
+  );
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log(
+      `[Collector ${user?.id?.slice(0, 8)}] Total pickups:`,
+      pickups.length
+    );
+    console.log(
+      `[Collector ${user?.id?.slice(0, 8)}] Available requests:`,
+      requestedPickups.length
+    );
+    console.log(
+      `[Collector ${user?.id?.slice(0, 8)}] My collections:`,
+      collectedPickups.length
+    );
+  }, [pickups.length, requestedPickups.length, collectedPickups.length]);
 
   const handleMarkCollected = async (pickupId: number, pickup: any) => {
     try {
@@ -505,6 +527,7 @@ function CollectorDashboard({
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Button
+              className="border-spacing-2"
               mode="outlined"
               textColor="white"
               buttonColor="transparent"
@@ -568,6 +591,9 @@ function CollectorDashboard({
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Available Pickup Requests</Text>
+          <Text style={styles.sectionSubtitle}>
+            {requestedPickups.length} unassigned requests
+          </Text>
         </View>
 
         {requestedPickups.length === 0 ? (
@@ -639,7 +665,10 @@ function CollectorDashboard({
       {collectedPickups.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Collections</Text>
+            <Text style={styles.sectionTitle}>My Recent Collections</Text>
+            <Text style={styles.sectionSubtitle}>
+              {collectedPickups.length} pickups collected by me
+            </Text>
           </View>
 
           {collectedPickups.slice(0, 5).map((pickup: any, index: number) => (
@@ -755,7 +784,7 @@ const styles = StyleSheet.create({
   },
   statNumber: {
     fontSize: 28,
-    color: "white",
+    color: "black",
     fontWeight: "800",
     textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 1, height: 1 },
@@ -763,7 +792,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 13,
-    color: "rgba(255, 255, 255, 0.95)",
+    color: "rgba(0, 0, 0, 0.95)",
     marginTop: 4,
     fontWeight: "600",
     letterSpacing: 0.3,
