@@ -12,10 +12,6 @@ export default function AppTabs() {
         return "#16a34a";
       case "collector":
         return "#0891b2";
-      case "admin":
-        return "#dc2626";
-      default:
-        return "#16a34a";
     }
   };
 
@@ -25,8 +21,6 @@ export default function AppTabs() {
         return "Dashboard";
       case "collector":
         return "Collections";
-      case "admin":
-        return "Admin Panel";
       default:
         return "Home";
     }
@@ -47,6 +41,7 @@ export default function AppTabs() {
 
   return (
     <Tabs
+      
       screenOptions={{
         headerTitle: `TrashTrack - ${
           currentRole.charAt(0).toUpperCase() + currentRole.slice(1)
@@ -57,17 +52,13 @@ export default function AppTabs() {
         },
         tabBarActiveTintColor: getRoleColor(currentRole),
         tabBarStyle: {
-          backgroundColor: "white",
-          borderTopWidth: 1,
-          borderTopColor: "#e5e7eb",
+          
           paddingTop: 8,
           paddingBottom: 8,
           height: 70,
         },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "600",
-        },
+        
+        
       }}
     >
       {/* Main Dashboard - Role-based content */}
@@ -93,25 +84,6 @@ export default function AppTabs() {
           tabBarIcon: ({ color, size, focused }) => (
             <MaterialCommunityIcons
               name={currentRole === "collector" ? "truck-delivery" : "recycle"}
-              color={color}
-              size={focused ? size + 2 : size}
-            />
-          ),
-        }}
-      />
-
-      {/* Profile Tab */}
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color, size, focused }) => (
-            <MaterialCommunityIcons
-              name={
-                currentRole === "collector"
-                  ? "account-hard-hat"
-                  : "account-circle"
-              }
               color={color}
               size={focused ? size + 2 : size}
             />

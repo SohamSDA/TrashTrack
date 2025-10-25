@@ -95,15 +95,45 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
-    await authService.signOut();
-    set({ user: null, profile: null, pickups: [], loading: false });
-  },
+    try {
+      // Set loading state immediately to prevent showing empty dashboard
+      set({ loading: true });
 
-  // Initialize app - check for existing session
+      await authService.signOut();
+      set({ user: null, profile: null, pickups: [], loading: false });
+      console.log("User successfully signed out");
+
+      // Reset navigation state so the index can navigate again after logout
+      const { resetNavigation } = await import("../app/index");
+      resetNavigation();
+
+      // Import router dynamically to avoid circular dependency
+      const { router } = await import("expo-router");
+      router.replace("/(auth)/login");
+    } catch (error) {
+      console.error("Error during sign out:", error);
+      // Still clear local state even if there's an error
+      set({ user: null, profile: null, pickups: [], loading: false });
+
+      // Reset navigation state
+      const { resetNavigation } = await import("../app/index");
+      resetNavigation();
+
+      // Still try to navigate even on error
+      const { router } = await import("expo-router");
+      router.replace("/(auth)/login");
+    }
+  }, // Initialize app - check for existing session
   initialize: async () => {
     try {
       set({ loading: true });
       const currentUser = await authService.getCurrentUser();
+      console.log("👤 Current user from auth:", {
+        exists: !!currentUser,
+        id: currentUser?.id?.slice(0, 8),
+        email: currentUser?.email,
+      });
+
       if (currentUser) {
         set({ user: currentUser });
         await get().loadProfile();
@@ -124,11 +154,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
-    console.log("Loading profile for user:", user.id);
     set({ loading: true });
     try {
       const profileData = await authService.getProfile(user.id);
-      console.log("Loaded profile data:", profileData);
       set({ profile: profileData, loading: false });
     } catch (error) {
       console.error("Error loading profile:", error);

@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { Button, Card, Chip, Text } from "react-native-paper";
+import LoadingScreen from "../loading";
 
 const { width } = Dimensions.get("window");
 
@@ -31,7 +32,16 @@ export default function MainDashboard() {
 
   const currentRole = profile?.role || "recycler";
 
+  if (!user) {
+    return <LoadingScreen />;
+  }
+
+  if (!profile) {
+    return <LoadingScreen />;
+  }
+
   useEffect(() => {
+    console.log("Dashboard effect - Role:", currentRole);
     if (currentRole === "collector") {
       loadAllPickups();
     } else {
@@ -125,13 +135,29 @@ function RecyclerDashboard({
               {user?.user_metadata?.full_name || "Recycler"}
             </Text>
           </View>
-          <View style={styles.coinsContainer}>
-            <MaterialCommunityIcons
-              name="circle-multiple"
-              size={24}
-              color="#FCD34D"
-            />
-            <Text style={styles.coinsText}>{totalCoins}</Text>
+          <View style={styles.headerActions}>
+            <View style={styles.coinsContainer}>
+              <MaterialCommunityIcons
+                name="circle-multiple"
+                size={24}
+                color="#FCD34D"
+              />
+              <Text style={styles.coinsText}>{totalCoins}</Text>
+            </View>
+            <Button
+              mode="outlined"
+              textColor="white"
+              buttonColor="transparent"
+              style={{ borderColor: "white", marginLeft: 12 }}
+              onPress={async () => {
+                console.log("Sign out pressed in recycler dashboard");
+                await signOut();
+              }}
+              icon="logout"
+              compact
+            >
+              Sign Out
+            </Button>
           </View>
         </View>
 
@@ -483,9 +509,9 @@ function CollectorDashboard({
               textColor="white"
               buttonColor="transparent"
               style={{ borderColor: "white" }}
-              onPress={() => {
+              onPress={async () => {
                 console.log("Sign out pressed in collector dashboard");
-                signOut();
+                await signOut();
               }}
               icon="logout"
               compact
@@ -680,6 +706,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 32,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   welcomeText: {
     fontSize: 18,
