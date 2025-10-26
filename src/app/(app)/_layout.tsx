@@ -26,12 +26,12 @@ export default function AppTabs() {
     }
   };
 
-  const getPickupsTitle = (role: string) => {
+  const getSecondTabTitle = (role: string) => {
     switch (role) {
       case "recycler":
         return "My Pickups";
       case "collector":
-        return "Collection Routes";
+        return "Earnings";
       case "admin":
         return "All Pickups";
       default:
@@ -76,14 +76,14 @@ export default function AppTabs() {
         }}
       />
 
-      {/* Pickups Tab - Role-based content */}
+      {/* Second Tab - Role-based content */}
       <Tabs.Screen
         name="pickups"
         options={{
-          title: getPickupsTitle(currentRole),
+          title: getSecondTabTitle(currentRole),
           tabBarIcon: ({ color, size, focused }) => (
             <MaterialCommunityIcons
-              name={currentRole === "collector" ? "truck-delivery" : "recycle"}
+              name={currentRole === "collector" ? "chart-line" : "recycle"}
               color={color}
               size={focused ? size + 2 : size}
             />
