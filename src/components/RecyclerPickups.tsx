@@ -19,9 +19,12 @@ export default function RecyclerPickups() {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
 
-  // Filter to show only requested pickups (hide collected ones)
+  // Filter to show requested and assigned pickups (hide collected ones)
   const activePickups = useMemo(
-    () => pickups.filter((p) => p.status === "requested"),
+    () =>
+      pickups.filter(
+        (p) => p.status === "requested" || p.status === "assigned"
+      ),
     [pickups]
   );
 
@@ -228,11 +231,20 @@ export default function RecyclerPickups() {
               compact
               style={{
                 backgroundColor:
-                  item.status === "collected" ? "#dcfce7" : "#fff7ed",
+                  item.status === "collected"
+                    ? "#dcfce7"
+                    : item.status === "assigned"
+                      ? "#d1fae5"
+                      : "#fff7ed",
                 borderRadius: 8,
               }}
               textStyle={{
-                color: item.status === "collected" ? "#16a34a" : "#f97316",
+                color:
+                  item.status === "collected"
+                    ? "#16a34a"
+                    : item.status === "assigned"
+                      ? "#059669"
+                      : "#f97316",
                 fontWeight: "600",
                 fontSize: 12,
                 textTransform: "capitalize",
@@ -347,6 +359,87 @@ export default function RecyclerPickups() {
             </View>
           )}
 
+          {/* Collector Information (for assigned pickups) */}
+          {item.status === "assigned" &&
+            (item.collector_name || item.collector_phone) && (
+              <View
+                style={{
+                  backgroundColor: "#dcfce7",
+                  borderRadius: 12,
+                  padding: 14,
+                  marginBottom: 16,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginBottom: 10,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="truck"
+                    size={16}
+                    color="#16a34a"
+                  />
+                  <Text
+                    variant="bodySmall"
+                    style={{
+                      color: "#16a34a",
+                      marginLeft: 6,
+                      fontWeight: "600",
+                      fontSize: 12,
+                    }}
+                  >
+                    Assigned Collector
+                  </Text>
+                </View>
+
+                {item.collector_name && (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <MaterialCommunityIcons
+                      name="account-circle"
+                      size={16}
+                      color="#16a34a"
+                    />
+                    <Text
+                      variant="bodyMedium"
+                      style={{ color: "#374151", marginLeft: 8 }}
+                    >
+                      {item.collector_name}
+                    </Text>
+                  </View>
+                )}
+
+                {item.collector_phone && (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                    }}
+                  >
+                    <MaterialCommunityIcons
+                      name="phone"
+                      size={16}
+                      color="#16a34a"
+                    />
+                    <Text
+                      variant="bodyMedium"
+                      style={{ color: "#374151", marginLeft: 8 }}
+                    >
+                      {item.collector_phone}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
           {/* Bottom Section: Potential Coins and Status */}
           <View
             style={{
@@ -388,6 +481,23 @@ export default function RecyclerPickups() {
                 icon="clock-outline"
               >
                 Waiting for Collector
+              </Chip>
+            )}
+            {item.status === "assigned" && (
+              <Chip
+                compact
+                style={{
+                  backgroundColor: "#dcfce7",
+                  borderRadius: 10,
+                }}
+                textStyle={{
+                  color: "#16a34a",
+                  fontWeight: "600",
+                  fontSize: 13,
+                }}
+                icon="truck-check"
+              >
+                Collector Assigned
               </Chip>
             )}
           </View>

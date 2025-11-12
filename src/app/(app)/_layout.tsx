@@ -130,6 +130,40 @@ export default function AppTabs() {
           tabBarAccessibilityLabel: `${getSecondTabTitle(currentRole)} tab`,
         }}
       />
+
+      {/* Assignments Tab - Only for Collectors */}
+      <Tabs.Screen
+        name="assignments"
+        options={{
+          title: "Assignments",
+          tabBarIcon: ({ color, size, focused }) => (
+            <MaterialCommunityIcons
+              name="clipboard-check"
+              color={color}
+              size={focused ? size + 4 : size}
+            />
+          ),
+          tabBarAccessibilityLabel: "My Assignments tab",
+          href: currentRole === "collector" ? "/assignments" : null,
+        }}
+      />
+
+      {/* Leaderboard Tab - Only for Recyclers */}
+      <Tabs.Screen
+        name="leaderboard"
+        options={{
+          title: "Leaderboard",
+          tabBarIcon: ({ color, size, focused }) => (
+            <MaterialCommunityIcons
+              name="trophy-variant"
+              color={color}
+              size={focused ? size + 4 : size}
+            />
+          ),
+          tabBarAccessibilityLabel: "Leaderboard tab",
+          href: currentRole === "recycler" ? "/leaderboard" : null,
+        }}
+      />
     </Tabs>
   );
 }

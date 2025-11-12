@@ -8,9 +8,11 @@ export type AppPickup = {
   user_id: string;
   material_code: string;
   weight_kg: number;
-  status: "requested" | "collected" | "completed";
+  status: "requested" | "assigned" | "collected" | "completed";
   coins_awarded: number | null;
   collector_id: string | null;
+  collector_name: string | null;
+  collector_phone: string | null;
   pickup_address: string | null;
   contact_number: string | null;
   contact_name: string | null;
@@ -52,7 +54,7 @@ type AuthState = {
   loadAllPickups: () => Promise<void>;
   assignPickup: (
     pickupId: number,
-    collectorId: string
+    collectorId?: string
   ) => Promise<{ ok: boolean; error?: string }>;
 
   updateUserCoins: (
@@ -243,6 +245,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           status: p.status,
           coins_awarded: p.coins_awarded,
           collector_id: p.collector_id,
+          collector_name: p.collector_name || null,
+          collector_phone: p.collector_phone || null,
           pickup_address: p.pickup_address,
           contact_number: p.contact_number,
           contact_name: p.contact_name,
@@ -316,12 +320,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // For collectors, only load:
       // 1. Available pickups (status = 'requested', no collector assigned)
-      // 2. Pickups they have collected (collector_id = their id)
+      // 2. Assigned pickups (status = 'assigned', collector_id = their id)
+      // 3. Pickups they have collected (status = 'collected', collector_id = their id)
       const { data, error } = await supabase
         .from("pickups")
         .select("*")
         .or(
-          `and(status.eq.requested,collector_id.is.null),and(status.eq.collected,collector_id.eq.${user.id})`
+          `and(status.eq.requested,collector_id.is.null),and(status.eq.assigned,collector_id.eq.${user.id}),and(status.eq.collected,collector_id.eq.${user.id})`
         )
         .order("created_at", { ascending: false });
 
@@ -343,6 +348,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           status: p.status,
           coins_awarded: p.coins_awarded,
           collector_id: p.collector_id,
+          collector_name: p.collector_name || null,
+          collector_phone: p.collector_phone || null,
           pickup_address: p.pickup_address,
           contact_number: p.contact_number,
           contact_name: p.contact_name,
@@ -362,11 +369,77 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   assignPickup: async (pickupId, collectorId) => {
     try {
+      const { user, profile } = get();
+
+      // If collectorId not provided, use current user
+      const targetCollectorId = collectorId || user?.id;
+
+      if (!targetCollectorId) {
+        return { ok: false, error: "No collector ID available" };
+      }
+
+      console.log("[assignPickup] Starting assignment:", {
+        pickupId,
+        collectorId: targetCollectorId,
+      });
+      console.log("[assignPickup] Current user:", {
+        id: user?.id,
+        email: user?.email,
+      });
+      console.log("[assignPickup] Current profile:", {
+        full_name: profile?.full_name,
+        role: profile?.role,
+      });
+
+      // Get collector's profile info (if not current user, fetch it)
+      let collectorName = null;
+      let collectorPhone = null;
+
+      if (targetCollectorId === user?.id) {
+        // Use current user's info
+        collectorName =
+          profile?.full_name ||
+          user?.user_metadata?.full_name ||
+          user?.email ||
+          null;
+        collectorPhone = user?.phone || user?.user_metadata?.phone || null;
+
+        console.log("[assignPickup] Using current user's info:", {
+          collectorName,
+          collectorPhone,
+        });
+      } else {
+        // Fetch other collector's info
+        const { data: collectorProfile, error: profileError } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", targetCollectorId)
+          .single();
+
+        if (!profileError && collectorProfile) {
+          collectorName = collectorProfile.full_name;
+        }
+
+        console.log("[assignPickup] Fetched collector info:", {
+          collectorName,
+          error: profileError,
+        });
+      }
+
+      console.log("[assignPickup] Updating pickup with:", {
+        collector_id: targetCollectorId,
+        collector_name: collectorName,
+        collector_phone: collectorPhone,
+        status: "assigned",
+      });
+
       const { error } = await supabase
         .from("pickups")
         .update({
-          collector_id: collectorId,
-          status: "collected",
+          collector_id: targetCollectorId,
+          collector_name: collectorName,
+          collector_phone: collectorPhone,
+          status: "assigned",
           updated_at: new Date().toISOString(),
         } as any)
         .eq("id", pickupId);
@@ -376,12 +449,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return { ok: false, error: error.message };
       }
 
+      console.log("[assignPickup] Successfully updated pickup in database");
+
       // Reload pickups to reflect changes
-      const { profile } = get();
       if (profile?.role === "collector") {
         await get().loadAllPickups();
+        console.log("[assignPickup] Reloaded pickups for collector");
       } else {
         await get().loadPickups();
+        console.log("[assignPickup] Reloaded pickups for recycler");
       }
 
       return { ok: true };

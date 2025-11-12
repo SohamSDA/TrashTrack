@@ -521,7 +521,7 @@ function getMaterialBreakdown(pickups: any[]) {
 function CollectorDashboard({
   user,
   pickups,
-
+  assignPickup,
   loadAllPickups,
   markCollected,
   signOut,
@@ -539,6 +539,18 @@ function CollectorDashboard({
   // Available pickups: status = 'requested' (no collector assigned yet)
   const requestedPickups = pickups.filter(
     (p: any) => p.status === "requested" && !p.collector_id
+  );
+
+  // Assigned pickups: status = 'assigned' AND collector_id = current user
+  const assignedPickups = pickups.filter(
+    (p: any) => p.status === "assigned" && p.collector_id === user?.id
+  );
+
+  // Available + Assigned pickups for the main list
+  const availablePickups = pickups.filter(
+    (p: any) =>
+      (p.status === "requested" && !p.collector_id) ||
+      (p.status === "assigned" && p.collector_id === user?.id)
   );
 
   // Collected pickups: status = 'collected' AND collector_id = current user
@@ -561,6 +573,42 @@ function CollectorDashboard({
       collectedPickups.length
     );
   }, [pickups.length, requestedPickups.length, collectedPickups.length]);
+
+  const handleAssignPickup = async (pickupId: number) => {
+    Alert.alert(
+      "Accept Pickup Request",
+      "Do you want to accept this pickup request?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Accept",
+          onPress: async () => {
+            try {
+              setBusyId(pickupId);
+              const res = await assignPickup(pickupId);
+              if (!res.ok) {
+                Alert.alert("Failed", res.error ?? "Try again.");
+              } else {
+                Alert.alert(
+                  "Assigned! 👍",
+                  "The pickup has been assigned to you. Don't forget to mark it as collected when you're done!"
+                );
+                await loadAllPickups();
+              }
+            } catch (error) {
+              console.error("Exception in assign pickup:", error);
+              Alert.alert(
+                "Network Error",
+                "Please check your connection and try again."
+              );
+            } finally {
+              setBusyId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleMarkCollected = async (pickupId: number, pickup: any) => {
     Alert.alert(
@@ -688,20 +736,63 @@ function CollectorDashboard({
             />
           </View>
         </Pressable>
+
+        {/* My Assignments Quick Access */}
+        {assignedPickups.length > 0 && (
+          <Pressable
+            onPress={() => router.push("/assignments")}
+            style={styles.assignmentsQuickCard}
+          >
+            <View style={styles.assignmentsQuickContent}>
+              <View style={styles.assignmentsQuickIcon}>
+                <MaterialCommunityIcons
+                  name="clipboard-check"
+                  size={24}
+                  color="#14b8a6"
+                />
+              </View>
+              <View style={styles.assignmentsQuickInfo}>
+                <Text style={styles.assignmentsQuickLabel}>My Assignments</Text>
+                <Text style={styles.assignmentsQuickValue}>
+                  {assignedPickups.length} pickup
+                  {assignedPickups.length !== 1 ? "s" : ""} ready to collect
+                </Text>
+              </View>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={24}
+                color="#5eead4"
+              />
+            </View>
+          </Pressable>
+        )}
       </LinearGradient>
 
       {/* Available Requests Section - Dark Theme */}
       <View style={styles.section}>
         <View style={styles.modernSectionHeader}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.modernSectionTitle}>Available Requests</Text>
             <Text style={styles.modernSectionSubtitle}>
               {requestedPickups.length > 0
-                ? `${requestedPickups.length} pickups ready to collect`
-                : "No requests available right now"}
+                ? `${requestedPickups.length} pickup${requestedPickups.length !== 1 ? "s" : ""} waiting`
+                : "No new requests right now"}
             </Text>
           </View>
-          {requestedPickups.length > 0 && (
+          {assignedPickups.length > 0 && (
+            <Button
+              mode="contained"
+              compact
+              onPress={() => router.push("/assignments")}
+              buttonColor="#0f766e"
+              style={{ borderRadius: 10 }}
+              labelStyle={{ fontSize: 12, fontWeight: "700" }}
+              icon="clipboard-check"
+            >
+              My Tasks ({assignedPickups.length})
+            </Button>
+          )}
+          {requestedPickups.length > 0 && assignedPickups.length === 0 && (
             <Chip
               mode="flat"
               style={{ backgroundColor: "#0f766e" }}
@@ -761,9 +852,31 @@ function CollectorDashboard({
                 </View>
                 <View style={styles.compactCardContent}>
                   <View style={styles.compactCardHeader}>
-                    <Text style={styles.compactMaterialTitle}>
-                      {pickup.material_code.toUpperCase()}
-                    </Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <Text style={styles.compactMaterialTitle}>
+                        {pickup.material_code.toUpperCase()}
+                      </Text>
+                      {pickup.status === "assigned" && (
+                        <Chip
+                          mode="flat"
+                          compact
+                          style={{ backgroundColor: "#14b8a6", height: 20 }}
+                          textStyle={{
+                            color: "#ffffff",
+                            fontSize: 10,
+                            fontWeight: "700",
+                          }}
+                        >
+                          ASSIGNED
+                        </Chip>
+                      )}
+                    </View>
                   </View>
                   <View style={styles.compactCardInfo}>
                     <Text style={styles.compactInfoText}>
@@ -1064,21 +1177,42 @@ function CollectorDashboard({
                     >
                       Close
                     </Button>
-                    <Button
-                      mode="contained"
-                      buttonColor="#0f766e"
-                      onPress={() => {
-                        setDetailsModalVisible(false);
-                        handleMarkCollected(selectedPickup.id, selectedPickup);
-                      }}
-                      loading={busyId === selectedPickup.id}
-                      disabled={busyId === selectedPickup.id}
-                      style={styles.detailsAcceptButton}
-                      labelStyle={{ fontWeight: "700" }}
-                      icon="check-circle"
-                    >
-                      Accept & Collect
-                    </Button>
+                    {selectedPickup.status === "requested" ? (
+                      <Button
+                        mode="contained"
+                        buttonColor="#0f766e"
+                        onPress={() => {
+                          setDetailsModalVisible(false);
+                          handleAssignPickup(selectedPickup.id);
+                        }}
+                        loading={busyId === selectedPickup.id}
+                        disabled={busyId === selectedPickup.id}
+                        style={styles.detailsAcceptButton}
+                        labelStyle={{ fontWeight: "700" }}
+                        icon="hand-okay"
+                      >
+                        Accept & Assign
+                      </Button>
+                    ) : (
+                      <Button
+                        mode="contained"
+                        buttonColor="#0f766e"
+                        onPress={() => {
+                          setDetailsModalVisible(false);
+                          handleMarkCollected(
+                            selectedPickup.id,
+                            selectedPickup
+                          );
+                        }}
+                        loading={busyId === selectedPickup.id}
+                        disabled={busyId === selectedPickup.id}
+                        style={styles.detailsAcceptButton}
+                        labelStyle={{ fontWeight: "700" }}
+                        icon="check-circle"
+                      >
+                        Mark Collected
+                      </Button>
+                    )}
                   </View>
                 </View>
               )}
@@ -2203,6 +2337,45 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748b",
     fontWeight: "500",
+  },
+  // My Assignments Quick Card
+  assignmentsQuickCard: {
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    marginTop: 8,
+  },
+  assignmentsQuickContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "rgba(15, 118, 110, 0.1)",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(20, 184, 166, 0.3)",
+  },
+  assignmentsQuickIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "rgba(20, 184, 166, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  assignmentsQuickInfo: {
+    flex: 1,
+  },
+  assignmentsQuickLabel: {
+    fontSize: 14,
+    color: "#94a3b8",
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  assignmentsQuickValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#14b8a6",
   },
   // Row-wise Stats Column
   quickStatsColumn: {
