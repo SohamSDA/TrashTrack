@@ -25,40 +25,56 @@ export default function CollectorEarnings() {
     [pickups, user?.id]
   );
 
-  // 2) totals
-  const totalEarnings = useMemo(
-    () => myCollectedPickups.reduce((s, p) => s + (p.coins_awarded || 0), 0),
+  // 2) totals - WEIGHT BASED (no coins!)
+  const totalWeight = useMemo(
+    () => myCollectedPickups.reduce((s, p) => s + (p.weight_kg || 0), 0),
     [myCollectedPickups]
   );
 
-  const weeklyEarnings = useMemo(() => {
+  const weeklyWeight = useMemo(() => {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     return myCollectedPickups
       .filter((p) => new Date(p.updated_at || "") >= oneWeekAgo)
-      .reduce((s, p) => s + (p.coins_awarded || 0), 0);
+      .reduce((s, p) => s + (p.weight_kg || 0), 0);
   }, [myCollectedPickups]);
 
-  const monthlyEarnings = useMemo(() => {
+  const monthlyWeight = useMemo(() => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     return myCollectedPickups
       .filter((p) => new Date(p.updated_at || "") >= startOfMonth)
-      .reduce((s, p) => s + (p.coins_awarded || 0), 0);
+      .reduce((s, p) => s + (p.weight_kg || 0), 0);
   }, [myCollectedPickups]);
 
-  // 3) material breakdown
+  const weeklyCollections = useMemo(() => {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    return myCollectedPickups.filter(
+      (p) => new Date(p.updated_at || "") >= oneWeekAgo
+    ).length;
+  }, [myCollectedPickups]);
+
+  const monthlyCollections = useMemo(() => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return myCollectedPickups.filter(
+      (p) => new Date(p.updated_at || "") >= startOfMonth
+    ).length;
+  }, [myCollectedPickups]);
+
+  // 3) material breakdown - WEIGHT AND COUNT (no coins!)
   const materialBreakdown = useMemo(() => {
-    const acc: Record<string, { count: number; earnings: number }> = {};
+    const acc: Record<string, { count: number; weight: number }> = {};
     for (const p of myCollectedPickups) {
       const material = p.material_code?.toUpperCase() || "UNKNOWN";
-      if (!acc[material]) acc[material] = { count: 0, earnings: 0 };
+      if (!acc[material]) acc[material] = { count: 0, weight: 0 };
       acc[material].count += 1;
-      acc[material].earnings += p.coins_awarded || 0;
+      acc[material].weight += p.weight_kg || 0;
     }
     return Object.entries(acc)
       .map(([material, data]) => ({ material, ...data }))
-      .sort((a, b) => b.earnings - a.earnings);
+      .sort((a, b) => b.weight - a.weight);
   }, [myCollectedPickups]);
 
   useEffect(() => {
@@ -81,11 +97,9 @@ export default function CollectorEarnings() {
     user?.email?.split("@")?.[0] ||
     "Collector";
 
-  const monthlyTarget = 500;
-  const monthlyProgress = Math.min(
-    (monthlyEarnings / monthlyTarget) * 100,
-    100
-  );
+  // Monthly target: 50kg of materials
+  const monthlyTarget = 50;
+  const monthlyProgress = Math.min((monthlyWeight / monthlyTarget) * 100, 100);
 
   if (loading) {
     return (
@@ -119,157 +133,242 @@ export default function CollectorEarnings() {
     >
       {/* HERO SECTION */}
       <LinearGradient colors={["#0f172a", "#0f766e"]} style={styles.hero}>
-        <View style={styles.heroTop}>
-          <View style={styles.userInfo}>
-            <Text style={styles.welcome}>Welcome back 👋</Text>
-            <Text style={styles.name}>{displayName}</Text>
-            <View style={styles.roleChip}>
-              <MaterialCommunityIcons
-                name="shield-check"
-                size={14}
-                color="#fff"
-              />
-              <Text style={styles.roleText}>Collector</Text>
-            </View>
-          </View>
-
-          <View style={styles.totalCard}>
-            <View style={styles.walletIconContainer}>
-              <MaterialCommunityIcons
-                name="wallet-outline"
-                size={24}
-                color="#0f766e"
-              />
-            </View>
-            <Text style={styles.totalLabel}>Total Coins</Text>
-            <Text style={styles.totalValue}>{totalEarnings}</Text>
-          </View>
+        <Text style={styles.compactName}>{displayName}</Text>
+        <View style={styles.compactRoleChip}>
+          <MaterialCommunityIcons
+            name="shield-check"
+            size={14}
+            color="#14b8a6"
+          />
+          <Text style={styles.compactRoleText}>Collector</Text>
         </View>
 
-        {/* METRICS ROW */}
-        <View style={styles.metricsRow}>
-          <Metric title="This Week" value={weeklyEarnings} icon="trending-up" />
-          <Metric
-            title="This Month"
-            value={monthlyEarnings}
-            icon="calendar-month"
-          />
-          <Metric
-            title="Collections"
-            value={myCollectedPickups.length}
-            icon="recycle"
-          />
+        {/* Compact Stats Grid - 2x2 */}
+        <View style={styles.compactStatsGrid}>
+          {/* Total Collected */}
+          <View style={styles.compactStatCard}>
+            <View style={styles.compactStatIcon}>
+              <MaterialCommunityIcons
+                name="weight-kilogram"
+                size={20}
+                color="#14b8a6"
+              />
+            </View>
+            <Text style={styles.compactStatLabel}>Total Collected</Text>
+            <Text style={styles.compactStatValue}>
+              {totalWeight.toFixed(1)} kg
+            </Text>
+          </View>
+
+          {/* This Week */}
+          <View style={styles.compactStatCard}>
+            <View style={styles.compactStatIcon}>
+              <MaterialCommunityIcons
+                name="trending-up"
+                size={20}
+                color="#14b8a6"
+              />
+            </View>
+            <Text style={styles.compactStatLabel}>This Week</Text>
+            <Text style={styles.compactStatValue}>
+              {weeklyWeight.toFixed(1)} kg
+            </Text>
+          </View>
+
+          {/* This Month */}
+          <View style={styles.compactStatCard}>
+            <View style={styles.compactStatIcon}>
+              <MaterialCommunityIcons
+                name="calendar-month"
+                size={20}
+                color="#14b8a6"
+              />
+            </View>
+            <Text style={styles.compactStatLabel}>This Month</Text>
+            <Text style={styles.compactStatValue}>
+              {monthlyWeight.toFixed(1)} kg
+            </Text>
+          </View>
+
+          {/* Collections */}
+          <View style={styles.compactStatCard}>
+            <View style={styles.compactStatIcon}>
+              <MaterialCommunityIcons
+                name="recycle"
+                size={20}
+                color="#14b8a6"
+              />
+            </View>
+            <Text style={styles.compactStatLabel}>Collections</Text>
+            <Text style={styles.compactStatValue}>
+              {myCollectedPickups.length}
+            </Text>
+          </View>
         </View>
       </LinearGradient>
 
-      {/* BODY (white sheet) */}
+      {/* BODY (dark theme) */}
       <View style={styles.sheet}>
         {/* monthly card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View>
-              <Text style={styles.cardTitle}>Monthly Target</Text>
-              <Text style={styles.cardSubtitle}>
-                Earn at least {monthlyTarget} coins
-              </Text>
+        <View style={styles.professionalCard}>
+          {/* Header with Icon */}
+          <View style={styles.professionalCardHeader}>
+            <View style={styles.iconCircle}>
+              <MaterialCommunityIcons name="target" size={28} color="#14b8a6" />
             </View>
-            <View style={styles.badge}>
-              <MaterialCommunityIcons name="target" color="#0f766e" size={14} />
-              <Text style={styles.badgeText}>
-                {monthlyProgress.toFixed(0)}%
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.monthlyBody}>
-            <View>
-              <Text style={styles.monthlyValue}>{monthlyEarnings}</Text>
-              <Text style={styles.monthlyLabel}>
-                coins collected this month
-              </Text>
-            </View>
-            <View style={styles.successPill}>
-              <MaterialCommunityIcons
-                name="check-decagram"
-                size={14}
-                color="#166534"
-              />
-              <Text style={styles.successText}>
-                {monthlyProgress.toFixed(0)}%
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.progressTrack}>
-            <View
-              style={[styles.progressFill, { width: `${monthlyProgress}%` }]}
+            <MaterialCommunityIcons
+              name="bookmark-outline"
+              size={24}
+              color="#94a3b8"
             />
+          </View>
+
+          {/* Title and Date */}
+          <View style={styles.cardTitleSection}>
+            <Text style={styles.professionalCardTitle}>Monthly Target</Text>
+            <Text style={styles.professionalCardDate}>
+              {new Date().toLocaleDateString("en-US", {
+                month: "short",
+                year: "numeric",
+              })}
+            </Text>
+          </View>
+
+          {/* Chips */}
+          <View style={styles.chipsRow}>
+            <View style={styles.chipDark}>
+              <Text style={styles.chipTextDark}>
+                {monthlyWeight.toFixed(1)} kg
+              </Text>
+            </View>
+            <View style={styles.chipSuccess}>
+              <Text style={styles.chipTextSuccess}>
+                {monthlyProgress.toFixed(0)}%
+              </Text>
+            </View>
+          </View>
+
+          {/* Info Box */}
+          <View style={styles.infoBoxDark}>
+            <View style={styles.infoRowDark}>
+              <MaterialCommunityIcons
+                name="information-outline"
+                size={16}
+                color="#94a3b8"
+              />
+              <Text style={styles.infoTextLabelDark}>Target Details</Text>
+            </View>
+            <Text style={styles.infoTextDark}>
+              Collect at least {monthlyTarget} kg this month
+            </Text>
+            <Text style={styles.infoTextDark}>
+              {monthlyCollections} collections completed
+            </Text>
+          </View>
+
+          {/* Progress Bar */}
+          <View style={styles.progressTrackDark}>
+            <View
+              style={[
+                styles.progressFillDark,
+                { width: `${monthlyProgress}%` },
+              ]}
+            />
+          </View>
+
+          {/* Bottom Section */}
+          <View style={styles.bottomSection}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <MaterialCommunityIcons
+                name="check-circle"
+                size={20}
+                color="#14b8a6"
+              />
+              <Text style={styles.bottomValueDark}>
+                {monthlyProgress.toFixed(0)}% Complete
+              </Text>
+            </View>
           </View>
         </View>
 
         {/* material breakdown */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Material Breakdown</Text>
+        <View style={styles.professionalCard}>
+          {/* Header with Icon */}
+          <View style={styles.professionalCardHeader}>
+            <View style={styles.iconCircle}>
+              <MaterialCommunityIcons
+                name="chart-donut"
+                size={28}
+                color="#c084fc"
+              />
+            </View>
             <MaterialCommunityIcons
-              name="chart-donut"
-              size={20}
-              color="#0f766e"
+              name="bookmark-outline"
+              size={24}
+              color="#94a3b8"
             />
           </View>
 
+          {/* Title and Date */}
+          <View style={styles.cardTitleSection}>
+            <Text style={styles.professionalCardTitle}>Material Breakdown</Text>
+            <Text style={styles.professionalCardDate}>All time statistics</Text>
+          </View>
+
           {materialBreakdown.length === 0 ? (
-            <View style={styles.emptyBox}>
+            <View style={styles.emptyBoxDark}>
               <MaterialCommunityIcons
                 name="progress-question"
                 size={34}
-                color="#94a3b8"
+                color="#64748b"
               />
-              <Text style={styles.emptyText}>
+              <Text style={styles.emptyTextDark}>
                 Collect some pickups to see stats
               </Text>
             </View>
           ) : (
-            <View style={{ gap: 14 }}>
+            <View style={{ gap: 14, marginTop: 16 }}>
               {materialBreakdown.map((item, idx) => {
                 const pct =
-                  totalEarnings > 0 ? (item.earnings / totalEarnings) * 100 : 0;
+                  totalWeight > 0 ? (item.weight / totalWeight) * 100 : 0;
                 const colors = ["#0ea5e9", "#a855f7", "#f97316", "#22c55e"];
                 const color = colors[idx % colors.length];
 
                 return (
                   <View key={item.material} style={{ gap: 6 }}>
-                    <View style={styles.breakRow}>
+                    <View style={styles.breakRowDark}>
                       <View style={styles.breakLeft}>
                         <View
                           style={[
-                            styles.breakIcon,
+                            styles.breakIconDark,
                             { backgroundColor: color + "22" },
                           ]}
                         >
                           <MaterialCommunityIcons
                             name="leaf"
                             color={color}
-                            size={16}
+                            size={18}
                           />
                         </View>
                         <View>
-                          <Text style={styles.breakMaterial}>
+                          <Text style={styles.breakMaterialDark}>
                             {item.material}
                           </Text>
-                          <Text style={styles.breakSub}>
+                          <Text style={styles.breakSubDark}>
                             {item.count} collections
                           </Text>
                         </View>
                       </View>
                       <View style={{ alignItems: "flex-end" }}>
-                        <Text style={styles.breakCoins}>
-                          {item.earnings} coins
+                        <Text style={styles.breakWeightDark}>
+                          {item.weight.toFixed(1)} kg
                         </Text>
-                        <Text style={styles.breakPct}>{pct.toFixed(0)}%</Text>
+                        <Text style={styles.breakPctDark}>
+                          {pct.toFixed(0)}%
+                        </Text>
                       </View>
                     </View>
-                    <View style={styles.progressTrackSm}>
+                    <View style={styles.progressTrackSmDark}>
                       <View
                         style={[
                           styles.progressFillSm,
@@ -294,7 +393,7 @@ function Metric({
   icon,
 }: {
   title: string;
-  value: number;
+  value: number | string;
   icon: any;
 }) {
   return (
@@ -313,8 +412,66 @@ const styles = StyleSheet.create({
     paddingTop: 54,
     paddingHorizontal: 20,
     paddingBottom: 22,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+  },
+  // Compact Header Styles
+  compactName: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+  compactRoleChip: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    flexDirection: "row",
+    gap: 4,
+    alignItems: "center",
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "rgba(20, 184, 166, 0.3)",
+    marginBottom: 20,
+  },
+  compactRoleText: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  // Compact Stats Grid (2x2)
+  compactStatsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  compactStatCard: {
+    flex: 1,
+    minWidth: "47%",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(20, 184, 166, 0.2)",
+  },
+  compactStatIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(20, 184, 166, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  compactStatLabel: {
+    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 11,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  compactStatValue: {
+    color: "#ffffff",
+    fontSize: 20,
+    fontWeight: "700",
   },
   heroTop: {
     flexDirection: "row",
@@ -364,6 +521,79 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
+  // Total Card Blended (No White Background)
+  totalCardBlended: {
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "rgba(20, 184, 166, 0.2)",
+  },
+  totalCardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  totalIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "rgba(20, 184, 166, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  totalTextSection: {
+    flex: 1,
+  },
+  totalLabelBlended: {
+    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 13,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  totalValueBlended: {
+    color: "#ffffff",
+    fontSize: 28,
+    fontWeight: "700",
+  },
+  // Row-wise Metric Cards
+  metricsColumn: {
+    gap: 12,
+  },
+  metricRowCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 14,
+    padding: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(20, 184, 166, 0.15)",
+  },
+  metricRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  metricIconBoxRow: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "rgba(20, 184, 166, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  metricRowTitle: {
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  metricRowValue: {
+    color: "#ffffff",
+    fontSize: 20,
+    fontWeight: "700",
+  },
   walletIconContainer: {
     backgroundColor: "#e6fffa",
     padding: 12,
@@ -398,9 +628,8 @@ const styles = StyleSheet.create({
   metricValue: { color: "#fff", fontSize: 18, fontWeight: "600" },
   sheet: {
     marginTop: -6,
-    backgroundColor: "#f8fafc",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: "#0f172a",
+
     padding: 16,
     gap: 16,
   },
@@ -413,6 +642,164 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 10,
     elevation: 1,
+  },
+  professionalCard: {
+    backgroundColor: "#1e293b",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "rgba(15, 118, 110, 0.2)",
+  },
+  professionalCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: "rgba(15, 118, 110, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cardTitleSection: {
+    marginBottom: 12,
+  },
+  professionalCardTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#ffffff",
+    marginBottom: 4,
+  },
+  professionalCardDate: {
+    fontSize: 13,
+    color: "#94a3b8",
+  },
+  chipsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+  },
+  chipDark: {
+    backgroundColor: "rgba(15, 118, 110, 0.15)",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  chipTextDark: {
+    color: "#5eead4",
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  chipSuccess: {
+    backgroundColor: "rgba(5, 150, 105, 0.2)",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  chipTextSuccess: {
+    color: "#6ee7b7",
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  infoBoxDark: {
+    backgroundColor: "rgba(15, 118, 110, 0.1)",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(15, 118, 110, 0.2)",
+  },
+  infoRowDark: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  infoTextLabelDark: {
+    color: "#94a3b8",
+    marginLeft: 6,
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  infoTextDark: {
+    color: "#cbd5e1",
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  progressTrackDark: {
+    height: 10,
+    backgroundColor: "rgba(15, 118, 110, 0.2)",
+    borderRadius: 999,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  progressFillDark: {
+    height: "100%",
+    backgroundColor: "#14b8a6",
+    borderRadius: 999,
+  },
+  bottomSection: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  bottomValueDark: {
+    color: "#ffffff",
+    fontWeight: "700",
+    marginLeft: 6,
+    fontSize: 16,
+  },
+  emptyBoxDark: {
+    alignItems: "center",
+    paddingVertical: 24,
+    gap: 6,
+  },
+  emptyTextDark: {
+    color: "#64748b",
+    fontSize: 13,
+  },
+  breakRowDark: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  breakIconDark: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  breakMaterialDark: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+  breakSubDark: {
+    fontSize: 11,
+    color: "#94a3b8",
+  },
+  breakWeightDark: {
+    fontWeight: "700",
+    color: "#ffffff",
+    fontSize: 16,
+  },
+  breakPctDark: {
+    fontSize: 11,
+    color: "#94a3b8",
+  },
+  progressTrackSmDark: {
+    height: 6,
+    backgroundColor: "rgba(15, 118, 110, 0.2)",
+    borderRadius: 999,
+    overflow: "hidden",
   },
   cardHeader: {
     flexDirection: "row",
@@ -481,7 +868,7 @@ const styles = StyleSheet.create({
   },
   breakMaterial: { fontSize: 13, fontWeight: "600", color: "#0f172a" },
   breakSub: { fontSize: 11, color: "#94a3b8" },
-  breakCoins: { fontWeight: "600", color: "#0f172a" },
+  breakWeight: { fontWeight: "600", color: "#0f172a" },
   breakPct: { fontSize: 11, color: "#94a3b8" },
   progressTrackSm: {
     height: 6,

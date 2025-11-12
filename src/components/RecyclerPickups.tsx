@@ -4,7 +4,6 @@ import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   RefreshControl,
   View,
@@ -62,7 +61,7 @@ export default function RecyclerPickups() {
         >
           <View
             style={{
-              backgroundColor: "#f1f5f9",
+              backgroundColor: "#dcfce7",
               borderRadius: 100,
               padding: 32,
             }}
@@ -70,13 +69,13 @@ export default function RecyclerPickups() {
             <MaterialCommunityIcons
               name="recycle-variant"
               size={64}
-              color="#0f766e"
+              color="#16a34a"
             />
           </View>
           <Text
             variant="headlineSmall"
             style={{
-              color: "#0f172a",
+              color: "#111827",
               fontWeight: "bold",
               textAlign: "center",
             }}
@@ -97,7 +96,7 @@ export default function RecyclerPickups() {
           <Button
             mode="contained"
             onPress={() => router.push("/pickups/new")}
-            buttonColor="#0f766e"
+            buttonColor="#16a34a"
             icon="plus-circle"
             style={{ marginTop: 16, borderRadius: 12 }}
             contentStyle={{ paddingVertical: 4 }}
@@ -113,65 +112,168 @@ export default function RecyclerPickups() {
   const renderItem = ({ item }: { item: AppPickup }) => {
     const created = item.created_at ? new Date(item.created_at) : null;
 
-    return (
-      <Card style={{ borderRadius: 16, marginBottom: 12 }}>
-        <Card.Content style={{ gap: 6 }}>
-          <Text variant="titleMedium">
-            {item.material_code.toUpperCase()} • {item.weight_kg} kg
-          </Text>
+    // Get material icon and color
+    const getMaterialIcon = (material: string) => {
+      switch (material.toLowerCase()) {
+        case "iron":
+          return { name: "iron", color: "#6b7280" };
+        case "plastic":
+          return { name: "bottle-soda", color: "#3b82f6" };
+        case "paper":
+          return { name: "file-document", color: "#f59e0b" };
+        case "glass":
+          return { name: "glass-fragile", color: "#06b6d4" };
+        default:
+          return { name: "recycle", color: "#16a34a" };
+      }
+    };
 
-          <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+    const materialInfo = getMaterialIcon(item.material_code);
+
+    return (
+      <Card
+        style={{
+          borderRadius: 16,
+          marginBottom: 16,
+          backgroundColor: "#ffffff",
+          elevation: 2,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+        }}
+      >
+        <Card.Content style={{ padding: 20 }}>
+          {/* Header with Material Icon and Bookmark */}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              marginBottom: 16,
+            }}
+          >
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 12,
+                backgroundColor: `${materialInfo.color}15`,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <MaterialCommunityIcons
+                name={materialInfo.name as any}
+                size={28}
+                color={materialInfo.color}
+              />
+            </View>
+            <MaterialCommunityIcons
+              name="bookmark-outline"
+              size={24}
+              color="#9ca3af"
+            />
+          </View>
+
+          {/* Material Type and Date */}
+          <View style={{ marginBottom: 12 }}>
+            <Text
+              variant="titleLarge"
+              style={{
+                fontWeight: "700",
+                color: "#111827",
+                marginBottom: 4,
+              }}
+            >
+              {item.material_code.toUpperCase()}
+            </Text>
+            <Text
+              variant="bodyMedium"
+              style={{ color: "#9ca3af", fontSize: 13 }}
+            >
+              {created
+                ? created.toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "Recent"}
+            </Text>
+          </View>
+
+          {/* Weight and Status Chips */}
+          <View
+            style={{
+              flexDirection: "row",
+              gap: 8,
+              marginBottom: 16,
+            }}
+          >
             <Chip
               compact
-              mode="outlined"
               style={{
-                borderColor:
-                  item.status === "collected" ? "#16a34a" : "#f97316",
+                backgroundColor: "#f3f4f6",
+                borderRadius: 8,
+              }}
+              textStyle={{
+                color: "#374151",
+                fontWeight: "600",
+                fontSize: 12,
+              }}
+            >
+              {item.weight_kg} kg
+            </Chip>
+            <Chip
+              compact
+              style={{
+                backgroundColor:
+                  item.status === "collected" ? "#dcfce7" : "#fff7ed",
+                borderRadius: 8,
               }}
               textStyle={{
                 color: item.status === "collected" ? "#16a34a" : "#f97316",
                 fontWeight: "600",
+                fontSize: 12,
+                textTransform: "capitalize",
               }}
             >
               {item.status}
             </Chip>
-
-            {typeof item.coins_awarded === "number" && (
-              <Chip compact mode="flat" icon="cash-multiple">
-                {item.coins_awarded} coins
-              </Chip>
-            )}
           </View>
 
-          {/* Show contact details for the recycler's own requests */}
+          {/* Contact Information */}
           {(item.pickup_address ||
             item.contact_name ||
             item.contact_number) && (
             <View
               style={{
-                backgroundColor: "#f1f5f9",
+                backgroundColor: "#f9fafb",
                 borderRadius: 12,
-                padding: 12,
-                marginTop: 8,
-                borderLeftWidth: 3,
-                borderLeftColor: "#16a34a",
+                padding: 14,
+                marginBottom: 16,
               }}
             >
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  marginBottom: 8,
+                  marginBottom: 10,
                 }}
               >
                 <MaterialCommunityIcons
-                  name="information"
+                  name="information-outline"
                   size={16}
-                  color="#64748b"
+                  color="#6b7280"
                 />
                 <Text
                   variant="bodySmall"
-                  style={{ color: "#64748b", marginLeft: 6, fontWeight: "600" }}
+                  style={{
+                    color: "#6b7280",
+                    marginLeft: 6,
+                    fontWeight: "600",
+                    fontSize: 12,
+                  }}
                 >
                   Your Contact Information
                 </Text>
@@ -182,17 +284,17 @@ export default function RecyclerPickups() {
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    marginBottom: 4,
+                    marginBottom: 6,
                   }}
                 >
                   <MaterialCommunityIcons
                     name="account"
-                    size={14}
+                    size={16}
                     color="#16a34a"
                   />
                   <Text
-                    variant="bodySmall"
-                    style={{ color: "#475569", marginLeft: 6 }}
+                    variant="bodyMedium"
+                    style={{ color: "#374151", marginLeft: 8 }}
                   >
                     {item.contact_name}
                   </Text>
@@ -204,17 +306,17 @@ export default function RecyclerPickups() {
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    marginBottom: 4,
+                    marginBottom: 6,
                   }}
                 >
                   <MaterialCommunityIcons
                     name="phone"
-                    size={14}
+                    size={16}
                     color="#16a34a"
                   />
                   <Text
-                    variant="bodySmall"
-                    style={{ color: "#475569", marginLeft: 6 }}
+                    variant="bodyMedium"
+                    style={{ color: "#374151", marginLeft: 8 }}
                   >
                     {item.contact_number}
                   </Text>
@@ -226,18 +328,17 @@ export default function RecyclerPickups() {
                   style={{
                     flexDirection: "row",
                     alignItems: "flex-start",
-                    marginBottom: 4,
                   }}
                 >
                   <MaterialCommunityIcons
                     name="map-marker"
-                    size={14}
+                    size={16}
                     color="#16a34a"
-                    style={{ marginTop: 1 }}
+                    style={{ marginTop: 2 }}
                   />
                   <Text
-                    variant="bodySmall"
-                    style={{ color: "#475569", marginLeft: 6, flex: 1 }}
+                    variant="bodyMedium"
+                    style={{ color: "#374151", marginLeft: 8, flex: 1 }}
                   >
                     {item.pickup_address}
                   </Text>
@@ -246,59 +347,51 @@ export default function RecyclerPickups() {
             </View>
           )}
 
-          <Text variant="bodySmall" style={{ color: "#94a3b8" }}>
-            #{item.id}
-            {created ? ` • ${created.toLocaleString()}` : ""}
-          </Text>
-        </Card.Content>
+          {/* Bottom Section: Potential Coins and Status */}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <MaterialCommunityIcons
+                name="circle-multiple"
+                size={20}
+                color="#fbbf24"
+              />
+              <Text
+                variant="titleMedium"
+                style={{
+                  color: "#111827",
+                  fontWeight: "700",
+                  marginLeft: 6,
+                }}
+              >
+                {Math.floor((item.weight_kg || 0) * 10)} coins
+              </Text>
+            </View>
 
-        {item.status === "requested" && (
-          <Card.Actions>
-            <Button
-              onPress={async () => {
-                Alert.alert(
-                  "Confirm Collection",
-                  "Mark this pickup as collected?",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Confirm",
-                      onPress: async () => {
-                        try {
-                          setBusyId(item.id);
-                          const res = await markCollected(item.id);
-                          if (!res.ok) {
-                            setSnackbarMessage(
-                              res.error ?? "Failed to mark as collected"
-                            );
-                            setSnackbarVisible(true);
-                          } else {
-                            setSnackbarMessage("Pickup marked as collected! ✓");
-                            setSnackbarVisible(true);
-                            await onRefresh();
-                            setRefreshKey((p) => p + 1);
-                          }
-                        } catch (e) {
-                          console.error("markCollected error", e);
-                          setSnackbarMessage(
-                            "Network error. Please try again."
-                          );
-                          setSnackbarVisible(true);
-                        } finally {
-                          setBusyId(null);
-                        }
-                      },
-                    },
-                  ]
-                );
-              }}
-              loading={busyId === item.id}
-              disabled={busyId === item.id}
-            >
-              Mark as Collected
-            </Button>
-          </Card.Actions>
-        )}
+            {item.status === "requested" && (
+              <Chip
+                compact
+                style={{
+                  backgroundColor: "#fff7ed",
+                  borderRadius: 10,
+                }}
+                textStyle={{
+                  color: "#f97316",
+                  fontWeight: "600",
+                  fontSize: 13,
+                }}
+                icon="clock-outline"
+              >
+                Waiting for Collector
+              </Chip>
+            )}
+          </View>
+        </Card.Content>
       </Card>
     );
   };
@@ -310,10 +403,10 @@ export default function RecyclerPickups() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: "#f8fafc",
+          backgroundColor: "#f0fdf4",
         }}
       >
-        <ActivityIndicator size="large" color="#0f766e" />
+        <ActivityIndicator size="large" color="#16a34a" />
         <Text style={{ color: "#64748b", marginTop: 16, fontSize: 16 }}>
           Loading your pickups...
         </Text>
@@ -322,7 +415,7 @@ export default function RecyclerPickups() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f8fafc", padding: 16 }}>
+    <View style={{ flex: 1, backgroundColor: "#f0fdf4", padding: 16 }}>
       <FlatList
         key={refreshKey}
         data={activePickups}
@@ -334,7 +427,7 @@ export default function RecyclerPickups() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#0f766e"]}
+            colors={["#16a34a"]}
           />
         }
       />
@@ -345,8 +438,10 @@ export default function RecyclerPickups() {
           position: "absolute",
           right: 20,
           bottom: 20,
-          backgroundColor: "#0f766e",
+          backgroundColor: "#16a34a",
+          borderRadius: 16,
         }}
+        color="#ffffff"
         onPress={() => router.push("/pickups/new")}
         label="New"
       />

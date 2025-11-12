@@ -1,6 +1,5 @@
 import { useAuthStore } from "@/lib/authStore";
-import { router, Stack } from "expo-router";
-import { IconButton } from "react-native-paper";
+import { Stack } from "expo-router";
 
 export default function PickupsLayout() {
   const { profile } = useAuthStore();
@@ -11,11 +10,9 @@ export default function PickupsLayout() {
       case "recycler":
         return "My Pickups";
       case "collector":
-        return "Earnings Dashboard";
+        return "Earnings";
       case "admin":
         return "All Pickups";
-      default:
-        return "Pickups";
     }
   };
 
@@ -24,17 +21,15 @@ export default function PickupsLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: getScreenTitle(currentRole),
-          headerRight: () =>
-            currentRole === "recycler" ? (
-              <IconButton
-                icon="plus"
-                onPress={() => router.push("/pickups/new")}
-              />
-            ) : null,
+          headerShown: false,
         }}
       />
-      <Stack.Screen name="new" options={{ title: "Schedule Pickup" }} />
+      <Stack.Screen
+        name="new"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

@@ -39,29 +39,59 @@ export default function AppTabs() {
     }
   };
 
+  // Role-based theme colors
+  const getTheme = (role: string) => {
+    if (role === "collector") {
+      return {
+        headerBg: "#0f172a",
+        headerText: "#ffffff",
+        tabBarBg: "#1e293b",
+        tabBarBorder: "#334155",
+        activeColor: "#0f766e",
+        inactiveColor: "#64748b",
+      };
+    }
+    // Recycler theme - white/light green
+    return {
+      headerBg: "#ffffff",
+      headerText: "#16a34a",
+      tabBarBg: "#ffffff",
+      tabBarBorder: "#e5e7eb",
+      activeColor: "#16a34a",
+      inactiveColor: "#9ca3af",
+    };
+  };
+
+  const theme = getTheme(currentRole);
+
   return (
     <Tabs
       screenOptions={{
         headerTitle: `TrashTrack - ${
           currentRole.charAt(0).toUpperCase() + currentRole.slice(1)
         }`,
-        headerTitleStyle: {
-          color: getRoleColor(currentRole),
-          fontWeight: "bold",
+        headerStyle: {
+          backgroundColor: theme.headerBg,
         },
-        tabBarActiveTintColor: getRoleColor(currentRole),
-        tabBarInactiveTintColor: "#94a3b8",
+        headerTitleStyle: {
+          color: theme.headerText,
+          fontWeight: "bold",
+          fontSize: 18,
+        },
+        tabBarActiveTintColor: theme.activeColor,
+        tabBarInactiveTintColor: theme.inactiveColor,
         tabBarStyle: {
           paddingTop: 8,
           paddingBottom: 8,
           height: 70,
+          backgroundColor: theme.tabBarBg,
+          borderTopWidth: 1,
+          borderTopColor: theme.tabBarBorder,
           elevation: 8,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.1,
           shadowRadius: 8,
-          borderTopWidth: 1,
-          borderTopColor: "#f1f5f9",
         },
         tabBarLabelStyle: {
           fontSize: 12,
