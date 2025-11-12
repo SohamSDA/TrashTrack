@@ -11,6 +11,9 @@ export type AppPickup = {
   status: "requested" | "collected" | "completed";
   coins_awarded: number | null;
   collector_id: string | null;
+  pickup_address: string | null;
+  contact_number: string | null;
+  contact_name: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -35,7 +38,10 @@ type AuthState = {
 
   requestPickup: (
     materialCode: string,
-    weightKg: number
+    weightKg: number,
+    pickupAddress?: string,
+    contactNumber?: string,
+    contactName?: string
   ) => Promise<{ ok: boolean; error?: string }>;
   loadPickups: () => Promise<void>;
   markCollected: (
@@ -165,7 +171,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // ---------- Pickup Operations ----------
-  requestPickup: async (materialCode, weightKg) => {
+  requestPickup: async (
+    materialCode,
+    weightKg,
+    pickupAddress,
+    contactNumber,
+    contactName
+  ) => {
     const { user, profile } = get();
     if (!user) return { ok: false, error: "Not authenticated" };
 
@@ -182,6 +194,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         status: "requested",
         coins_awarded: 0,
         collector_id: null,
+        pickup_address: pickupAddress || null,
+        contact_number: contactNumber || null,
+        contact_name: contactName || null,
       } as any); // Pragmatic fix - use any for college project
 
       if (error) {
@@ -228,6 +243,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           status: p.status,
           coins_awarded: p.coins_awarded,
           collector_id: p.collector_id,
+          pickup_address: p.pickup_address,
+          contact_number: p.contact_number,
+          contact_name: p.contact_name,
           created_at: p.created_at,
           updated_at: p.updated_at,
         })
@@ -325,6 +343,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           status: p.status,
           coins_awarded: p.coins_awarded,
           collector_id: p.collector_id,
+          pickup_address: p.pickup_address,
+          contact_number: p.contact_number,
+          contact_name: p.contact_name,
           created_at: p.created_at,
           updated_at: p.updated_at,
         })

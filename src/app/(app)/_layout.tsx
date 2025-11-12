@@ -41,7 +41,6 @@ export default function AppTabs() {
 
   return (
     <Tabs
-      
       screenOptions={{
         headerTitle: `TrashTrack - ${
           currentRole.charAt(0).toUpperCase() + currentRole.slice(1)
@@ -51,14 +50,23 @@ export default function AppTabs() {
           fontWeight: "bold",
         },
         tabBarActiveTintColor: getRoleColor(currentRole),
+        tabBarInactiveTintColor: "#94a3b8",
         tabBarStyle: {
-          
           paddingTop: 8,
           paddingBottom: 8,
           height: 70,
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          borderTopWidth: 1,
+          borderTopColor: "#f1f5f9",
         },
-        
-        
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "600",
+        },
       }}
     >
       {/* Main Dashboard - Role-based content */}
@@ -70,9 +78,10 @@ export default function AppTabs() {
             <MaterialCommunityIcons
               name={currentRole === "collector" ? "truck" : "home-variant"}
               color={color}
-              size={focused ? size + 2 : size}
+              size={focused ? size + 4 : size}
             />
           ),
+          tabBarAccessibilityLabel: `${getHomeTitle(currentRole)} tab`,
         }}
       />
 
@@ -85,9 +94,10 @@ export default function AppTabs() {
             <MaterialCommunityIcons
               name={currentRole === "collector" ? "chart-line" : "recycle"}
               color={color}
-              size={focused ? size + 2 : size}
+              size={focused ? size + 4 : size}
             />
           ),
+          tabBarAccessibilityLabel: `${getSecondTabTitle(currentRole)} tab`,
         }}
       />
     </Tabs>

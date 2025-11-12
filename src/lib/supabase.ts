@@ -55,6 +55,9 @@ export type Database = {
           status: "requested" | "collected"; // keep in sync with DB
           coins_awarded: number | null;
           collector_id: string | null;
+          pickup_address: string | null;
+          contact_number: string | null;
+          contact_name: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -66,6 +69,9 @@ export type Database = {
           status?: "requested" | "collected";
           coins_awarded?: number | null;
           collector_id?: string | null;
+          pickup_address?: string | null;
+          contact_number?: string | null;
+          contact_name?: string | null;
           created_at?: string | null;
           updated_at?: string | null;
         };

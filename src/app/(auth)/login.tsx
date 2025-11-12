@@ -22,7 +22,10 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please fill in all fields");
+      Alert.alert(
+        "Missing Information",
+        "Please enter both email and password"
+      );
       return;
     }
 
@@ -33,13 +36,18 @@ export default function LoginScreen() {
       if (error) {
         Alert.alert(
           "Login Failed",
-          error.message || "Invalid email or password"
+          error.message ||
+            "Invalid email or password. Please check your credentials and try again."
         );
       } else {
+        // Success - navigate to app
         router.replace("/(app)");
       }
     } catch (err) {
-      Alert.alert("Error", "Something went wrong. Please try again.");
+      Alert.alert(
+        "Network Error",
+        "Please check your internet connection and try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -54,7 +62,7 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: "center",
@@ -129,8 +137,16 @@ export default function LoginScreen() {
                 onPress={handleLogin}
                 loading={loading}
                 disabled={loading}
-                style={{ marginTop: 8, paddingVertical: 8 }}
-                labelStyle={{ fontSize: 16 }}
+                buttonColor="#047857"
+                style={{
+                  marginTop: 8,
+                  paddingVertical: 8,
+                  borderRadius: 12,
+                  elevation: 4,
+                }}
+                contentStyle={{ paddingVertical: 4 }}
+                labelStyle={{ fontSize: 16, fontWeight: "600" }}
+                icon={loading ? undefined : "login"}
               >
                 {loading ? "Signing In..." : "Sign In"}
               </Button>

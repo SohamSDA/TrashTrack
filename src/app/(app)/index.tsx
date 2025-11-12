@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import {
   Alert,
   Dimensions,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -115,11 +116,60 @@ function RecyclerDashboard({
       ? Math.round((completedPickups.length / totalRequests) * 100)
       : 0;
 
+  // Calculate total weight recycled
+  const totalWeightRecycled = completedPickups.reduce(
+    (sum: number, p: any) => sum + p.weight_kg,
+    0
+  );
+
+  // Weekly goal: 50kg
+  const weeklyGoal = 50;
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const weeklyWeight = completedPickups
+    .filter((p: any) => new Date(p.updated_at || p.created_at) >= oneWeekAgo)
+    .reduce((sum: number, p: any) => sum + p.weight_kg, 0);
+  const weeklyProgress = Math.min((weeklyWeight / weeklyGoal) * 100, 100);
+
+  // Streak calculation - count consecutive days with collections
+  const calculateStreak = (pickups: any[]) => {
+    if (pickups.length === 0) return 0;
+
+    const dates = pickups
+      .map((p) => new Date(p.updated_at || p.created_at).toDateString())
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    let streak = 0;
+    const today = new Date().toDateString();
+
+    for (let i = 0; i < dates.length; i++) {
+      const checkDate = new Date();
+      checkDate.setDate(checkDate.getDate() - i);
+      if (dates.includes(checkDate.toDateString())) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  };
+
+  const streak = calculateStreak(completedPickups);
+
+  // Impact stats
+  const co2Saved = (totalWeightRecycled * 1.8).toFixed(1); // 1.8kg CO2 per kg recycled
+  const treesSaved = (totalWeightRecycled / 15).toFixed(1); // 15kg = 1 tree equivalent
+
   return (
     <ScrollView
       style={styles.modernContainer}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={["#16a34a"]}
+        />
       }
       showsVerticalScrollIndicator={false}
     >
@@ -181,30 +231,132 @@ function RecyclerDashboard({
         </View>
       </LinearGradient>
 
+      {/* Coins & Rewards Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pending Pickups</Text>
-        <Text style={styles.sectionSubtitle}>
-          {pendingPickups.length} request
-          {pendingPickups.length !== 1 ? "s" : ""} waiting for collection
-        </Text>
+        <Card style={styles.rewardsCard}>
+          <LinearGradient
+            colors={["#fbbf24", "#f59e0b"]}
+            style={styles.rewardsGradient}
+          >
+            <View style={styles.rewardsContent}>
+              <View>
+                <Text style={styles.rewardsLabel}>Your Coins</Text>
+                <View style={styles.rewardsCoins}>
+                  <MaterialCommunityIcons
+                    name="cash-multiple"
+                    size={36}
+                    color="#ffffff"
+                  />
+                  <Text style={styles.rewardsAmount}>{totalCoins}</Text>
+                </View>
+                <Text style={styles.rewardsSubtext}>
+                  {totalCoins >= 100
+                    ? "🏆 Gold Tier Member!"
+                    : `${100 - totalCoins} coins to Gold tier`}
+                </Text>
+              </View>
+              <Button
+                mode="contained"
+                buttonColor="#ffffff"
+                textColor="#f59e0b"
+                style={{ borderRadius: 20 }}
+                contentStyle={{ paddingHorizontal: 8 }}
+                labelStyle={{ fontWeight: "700", fontSize: 14 }}
+              >
+                Redeem
+              </Button>
+            </View>
+          </LinearGradient>
+        </Card>
+      </View>
 
-        {pendingPickups.length === 0 ? (
-          <Card style={styles.infoCard}>
-            <Card.Content style={styles.infoContent}>
-              <MaterialCommunityIcons
-                name="check-circle"
-                size={48}
-                color="#10B981"
-              />
-              <Text style={styles.infoTitle}>All Clear!</Text>
-              <Text style={styles.infoDescription}>
-                No pending pickup requests at the moment
+      {/* Weekly Goal Progress */}
+      <View style={styles.section}>
+        <Card style={styles.goalCard}>
+          <Card.Content>
+            <View style={styles.goalHeader}>
+              <View style={styles.goalTitleRow}>
+                <MaterialCommunityIcons
+                  name="target"
+                  size={24}
+                  color="#16a34a"
+                />
+                <Text style={styles.goalTitle}>Weekly Goal</Text>
+              </View>
+              <Text style={styles.goalProgress}>
+                {weeklyWeight.toFixed(1)} / {weeklyGoal}kg
               </Text>
+            </View>
+
+            <View style={styles.progressBar}>
+              <View
+                style={[styles.progressFill, { width: `${weeklyProgress}%` }]}
+              />
+            </View>
+
+            <Text style={styles.goalSubtext}>
+              {weeklyProgress >= 100
+                ? "🎉 Goal achieved! Keep it up!"
+                : `${(weeklyGoal - weeklyWeight).toFixed(1)}kg more to reach your goal`}
+            </Text>
+          </Card.Content>
+        </Card>
+      </View>
+
+      {/* Streak Tracker & Impact Stats */}
+      <View style={styles.section}>
+        <View style={styles.statsGrid}>
+          {/* Streak Card */}
+          <Card style={styles.miniCard}>
+            <Card.Content style={styles.miniCardContent}>
+              <View style={styles.miniIconContainer}>
+                <MaterialCommunityIcons name="fire" size={32} color="#f97316" />
+              </View>
+              <Text style={styles.miniCardValue}>{streak}</Text>
+              <Text style={styles.miniCardLabel}>Day Streak</Text>
+              {streak > 0 && (
+                <Text style={styles.miniCardSubtext}>Keep it going! 🔥</Text>
+              )}
             </Card.Content>
           </Card>
-        ) : (
+
+          {/* CO2 Saved Card */}
+          <Card style={styles.miniCard}>
+            <Card.Content style={styles.miniCardContent}>
+              <View style={styles.miniIconContainer}>
+                <MaterialCommunityIcons name="leaf" size={32} color="#10b981" />
+              </View>
+              <Text style={styles.miniCardValue}>{co2Saved}kg</Text>
+              <Text style={styles.miniCardLabel}>CO₂ Saved</Text>
+              <Text style={styles.miniCardSubtext}>Amazing impact!</Text>
+            </Card.Content>
+          </Card>
+
+          {/* Trees Saved Card */}
+          <Card style={styles.miniCard}>
+            <Card.Content style={styles.miniCardContent}>
+              <View style={styles.miniIconContainer}>
+                <MaterialCommunityIcons name="tree" size={32} color="#059669" />
+              </View>
+              <Text style={styles.miniCardValue}>{treesSaved}</Text>
+              <Text style={styles.miniCardLabel}>Trees Saved</Text>
+              <Text style={styles.miniCardSubtext}>Equivalent</Text>
+            </Card.Content>
+          </Card>
+        </View>
+      </View>
+
+      {/* Active Pickups */}
+      {pendingPickups.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Active Pickups</Text>
+          <Text style={styles.sectionSubtitle}>
+            {pendingPickups.length} request
+            {pendingPickups.length !== 1 ? "s" : ""} waiting
+          </Text>
+
           <View style={styles.pendingGrid}>
-            {pendingPickups.map((pickup: any, index: number) => (
+            {pendingPickups.slice(0, 2).map((pickup: any, index: number) => (
               <Card key={index} style={styles.pendingCard}>
                 <Card.Content style={styles.pendingContent}>
                   <View style={styles.pendingHeader}>
@@ -225,7 +377,7 @@ function RecyclerDashboard({
                     </View>
                     <View style={styles.pendingInfo}>
                       <Text style={styles.pendingTitle}>
-                        {pickup.material_code}
+                        {pickup.material_code.toUpperCase()}
                       </Text>
                       <Text style={styles.pendingWeight}>
                         {pickup.weight_kg}kg
@@ -240,114 +392,14 @@ function RecyclerDashboard({
                     </Chip>
                   </View>
                   <Text style={styles.pendingDate}>
-                    Requested {formatRelativeTime(pickup.created_at)}
+                    {formatRelativeTime(pickup.created_at)}
                   </Text>
                 </Card.Content>
               </Card>
             ))}
           </View>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Material Breakdown</Text>
-        <Text style={styles.sectionSubtitle}>
-          Your recycling activity by material type
-        </Text>
-
-        <View style={styles.breakdownGrid}>
-          {getMaterialBreakdown(myPickups).map((item: any, index) => (
-            <Card key={index} style={styles.breakdownCard}>
-              <Card.Content style={styles.breakdownContent}>
-                <View
-                  style={[
-                    styles.breakdownIcon,
-                    { backgroundColor: item.color + "20" },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name={item.icon}
-                    size={28}
-                    color={item.color}
-                  />
-                </View>
-                <Text style={styles.breakdownMaterial}>{item.material}</Text>
-                <Text style={styles.breakdownCount}>{item.count} requests</Text>
-                <Text style={styles.breakdownWeight}>
-                  {item.totalWeight.toFixed(1)}kg total
-                </Text>
-              </Card.Content>
-            </Card>
-          ))}
         </View>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Requests</Text>
-          {myPickups.length > 3 && (
-            <Button mode="text" compact onPress={() => {}}>
-              View All
-            </Button>
-          )}
-        </View>
-
-        {myPickups.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Card.Content style={styles.emptyContent}>
-              <MaterialCommunityIcons name="leaf" size={48} color="#9CA3AF" />
-              <Text style={styles.emptyTitle}>No requests yet</Text>
-              <Text style={styles.emptyDescription}>
-                Start by requesting pickup for your recyclable materials
-              </Text>
-            </Card.Content>
-          </Card>
-        ) : (
-          myPickups.slice(0, 3).map((pickup: any, index: number) => (
-            <Card key={index} style={styles.activityCard}>
-              <Card.Content style={styles.activityContent}>
-                <View style={styles.activityLeft}>
-                  <View
-                    style={[
-                      styles.activityIcon,
-                      { backgroundColor: getStatusColor(pickup.status) + "20" },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={getMaterialIcon(pickup.material_code)}
-                      size={24}
-                      color={getStatusColor(pickup.status)}
-                    />
-                  </View>
-                  <View style={styles.activityInfo}>
-                    <Text style={styles.activityTitle}>
-                      {pickup.material_code} • {pickup.weight_kg}kg
-                    </Text>
-                    <Text style={styles.activityDate}>
-                      {formatDate(pickup.created_at)}
-                    </Text>
-                  </View>
-                </View>
-                <Chip
-                  mode="flat"
-                  style={[
-                    styles.statusChip,
-                    { backgroundColor: getStatusColor(pickup.status) + "20" },
-                  ]}
-                  textStyle={{
-                    color: getStatusColor(pickup.status),
-                    fontSize: 12,
-                    fontWeight: "600",
-                  }}
-                >
-                  {pickup.status.charAt(0).toUpperCase() +
-                    pickup.status.slice(1)}
-                </Chip>
-              </Card.Content>
-            </Card>
-          ))
-        )}
-      </View>
+      )}
 
       <View style={{ height: 100 }} />
     </ScrollView>
@@ -485,31 +537,53 @@ function CollectorDashboard({
   }, [pickups.length, requestedPickups.length, collectedPickups.length]);
 
   const handleMarkCollected = async (pickupId: number, pickup: any) => {
-    try {
-      setBusyId(pickupId);
-      const res = await markCollected(pickupId, {
-        coins_awarded: Math.floor(pickup.weight_kg * 10),
-        collector_id: user?.id,
-      });
-      if (!res.ok) {
-        Alert.alert("Failed", res.error ?? "Try again.");
-      } else {
-        Alert.alert("Success", "Pickup request accepted and collected!");
-        await loadAllPickups();
-      }
-    } catch (error) {
-      console.error("Exception in collector mark collected:", error);
-      Alert.alert("Error", "An unexpected error occurred");
-    } finally {
-      setBusyId(null);
-    }
+    Alert.alert(
+      "Confirm Collection",
+      `Collect ${pickup.weight_kg}kg of ${pickup.material_code}?\n\nYou'll earn ${Math.floor(pickup.weight_kg * 10)} coins.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Collect",
+          onPress: async () => {
+            try {
+              setBusyId(pickupId);
+              const res = await markCollected(pickupId, {
+                coins_awarded: Math.floor(pickup.weight_kg * 10),
+                collector_id: user?.id,
+              });
+              if (!res.ok) {
+                Alert.alert("Failed", res.error ?? "Try again.");
+              } else {
+                Alert.alert(
+                  "Success! 🎉",
+                  `You collected ${pickup.weight_kg}kg of ${pickup.material_code} and earned ${Math.floor(pickup.weight_kg * 10)} coins!`
+                );
+                await loadAllPickups();
+              }
+            } catch (error) {
+              console.error("Exception in collector mark collected:", error);
+              Alert.alert(
+                "Network Error",
+                "Please check your connection and try again."
+              );
+            } finally {
+              setBusyId(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
     <ScrollView
       style={styles.modernContainer}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={["#0891b2"]}
+        />
       }
       showsVerticalScrollIndicator={false}
     >
@@ -638,6 +712,98 @@ function CollectorDashboard({
                     REQUESTED
                   </Chip>
                 </View>
+
+                {/* Contact & Address Information */}
+                {(pickup.pickup_address ||
+                  pickup.contact_name ||
+                  pickup.contact_number) && (
+                  <View style={styles.contactSection}>
+                    <View style={styles.contactHeader}>
+                      <MaterialCommunityIcons
+                        name="account-circle"
+                        size={20}
+                        color="#6b7280"
+                      />
+                      <Text style={styles.contactHeaderText}>
+                        Contact Details
+                      </Text>
+                    </View>
+
+                    {pickup.contact_name && (
+                      <View style={styles.contactRow}>
+                        <MaterialCommunityIcons
+                          name="account"
+                          size={16}
+                          color="#10b981"
+                        />
+                        <Text style={styles.contactText}>
+                          {pickup.contact_name}
+                        </Text>
+                      </View>
+                    )}
+
+                    {pickup.contact_number && (
+                      <View style={styles.contactRow}>
+                        <MaterialCommunityIcons
+                          name="phone"
+                          size={16}
+                          color="#10b981"
+                        />
+                        <Text style={styles.contactText}>
+                          {pickup.contact_number}
+                        </Text>
+                        <Button
+                          mode="outlined"
+                          compact
+                          onPress={() => {
+                            const phoneNumber = pickup.contact_number.replace(
+                              /[\s\-\(\)\+]/g,
+                              ""
+                            );
+                            const url = `tel:${phoneNumber}`;
+                            Linking.openURL(url).catch(() => {
+                              Alert.alert("Error", "Unable to make phone call");
+                            });
+                          }}
+                          style={styles.contactButton}
+                          textColor="#10b981"
+                        >
+                          Call
+                        </Button>
+                      </View>
+                    )}
+
+                    {pickup.pickup_address && (
+                      <View style={styles.contactRow}>
+                        <MaterialCommunityIcons
+                          name="map-marker"
+                          size={16}
+                          color="#10b981"
+                        />
+                        <Text style={styles.contactText} numberOfLines={2}>
+                          {pickup.pickup_address}
+                        </Text>
+                        <Button
+                          mode="outlined"
+                          compact
+                          onPress={() => {
+                            const encodedAddress = encodeURIComponent(
+                              pickup.pickup_address
+                            );
+                            const url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+                            Linking.openURL(url).catch(() => {
+                              Alert.alert("Error", "Unable to open maps");
+                            });
+                          }}
+                          style={styles.contactButton}
+                          textColor="#10b981"
+                        >
+                          Navigate
+                        </Button>
+                      </View>
+                    )}
+                  </View>
+                )}
 
                 <View style={styles.pickupActions}>
                   <Text style={styles.coinsPreview}>
@@ -1105,5 +1271,153 @@ const styles = StyleSheet.create({
   },
   collectorStatusChip: {
     alignSelf: "flex-start",
+  },
+  // Contact Section Styles
+  contactSection: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: "#10b981",
+  },
+  contactHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  contactHeaderText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#374151",
+    marginLeft: 8,
+  },
+  contactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    paddingVertical: 4,
+  },
+  contactText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#4b5563",
+    marginLeft: 8,
+    lineHeight: 20,
+  },
+  contactButton: {
+    marginLeft: 8,
+    borderColor: "#10b981",
+    borderRadius: 20,
+  },
+  // New Dashboard Styles
+  rewardsCard: {
+    borderRadius: 20,
+    overflow: "hidden",
+    elevation: 4,
+  },
+  rewardsGradient: {
+    padding: 24,
+  },
+  rewardsContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  rewardsLabel: {
+    fontSize: 14,
+    color: "#ffffff",
+    opacity: 0.9,
+    marginBottom: 8,
+  },
+  rewardsCoins: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  rewardsAmount: {
+    fontSize: 36,
+    fontWeight: "bold",
+    color: "#ffffff",
+  },
+  rewardsSubtext: {
+    fontSize: 13,
+    color: "#ffffff",
+    opacity: 0.8,
+  },
+  goalCard: {
+    borderRadius: 16,
+    elevation: 2,
+  },
+  goalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  goalTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  goalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1f2937",
+  },
+  goalProgress: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#16a34a",
+  },
+  progressBar: {
+    height: 12,
+    backgroundColor: "#e5e7eb",
+    borderRadius: 6,
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#16a34a",
+    borderRadius: 6,
+  },
+  goalSubtext: {
+    fontSize: 14,
+    color: "#6b7280",
+    textAlign: "center",
+  },
+  statsGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  miniCard: {
+    flex: 1,
+    borderRadius: 16,
+    elevation: 2,
+  },
+  miniCardContent: {
+    alignItems: "center",
+    paddingVertical: 20,
+    gap: 8,
+  },
+  miniIconContainer: {
+    marginBottom: 4,
+  },
+  miniCardValue: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#1f2937",
+  },
+  miniCardLabel: {
+    fontSize: 12,
+    color: "#6b7280",
+    textAlign: "center",
+  },
+  miniCardSubtext: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginTop: 2,
   },
 });

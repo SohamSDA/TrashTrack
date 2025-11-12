@@ -32,19 +32,22 @@ export default function SignupScreen() {
 
   const validateForm = () => {
     if (!email.trim()) {
-      Alert.alert("Error", "Email is required");
+      Alert.alert("Missing Information", "Please enter your email address");
       return false;
     }
     if (!fullName.trim()) {
-      Alert.alert("Error", "Full name is required");
+      Alert.alert("Missing Information", "Please enter your full name");
       return false;
     }
     if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+      Alert.alert(
+        "Weak Password",
+        "Password must be at least 6 characters long"
+      );
       return false;
     }
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+      Alert.alert("Password Mismatch", "The passwords you entered don't match");
       return false;
     }
     return true;
@@ -65,22 +68,25 @@ export default function SignupScreen() {
       if (error) {
         Alert.alert(
           "Signup Failed",
-          error.message || "Failed to create account"
+          error.message || "Unable to create account. Please try again."
         );
       } else {
         Alert.alert(
-          "Account Created!",
-          "Please check your email to verify your account before signing in.",
+          "Welcome to TrashTrack! 🎉",
+          "Your account has been created successfully. Please check your email to verify your account.",
           [
             {
-              text: "OK",
+              text: "Got It",
               onPress: () => router.push("/"),
             },
           ]
         );
       }
     } catch (err) {
-      Alert.alert("Error", "Something went wrong. Please try again.");
+      Alert.alert(
+        "Network Error",
+        "Please check your internet connection and try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -224,8 +230,16 @@ export default function SignupScreen() {
                 onPress={handleSignup}
                 loading={loading}
                 disabled={loading}
-                style={{ marginTop: 8, paddingVertical: 8 }}
-                labelStyle={{ fontSize: 16 }}
+                buttonColor="#047857"
+                style={{
+                  marginTop: 8,
+                  paddingVertical: 8,
+                  borderRadius: 12,
+                  elevation: 4,
+                }}
+                contentStyle={{ paddingVertical: 4 }}
+                labelStyle={{ fontSize: 16, fontWeight: "600" }}
+                icon={loading ? undefined : "account-plus"}
               >
                 {loading ? "Creating Account..." : "Create Account"}
               </Button>
