@@ -12,6 +12,7 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { Button, Card, Chip, Text } from "react-native-paper";
@@ -102,6 +103,9 @@ function RecyclerDashboard({
   onRefresh,
 }: any) {
   const { profile } = useAuthStore();
+  const [selectedPickup, setSelectedPickup] = useState<any>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+
   const myPickups = pickups;
   const pendingPickups = myPickups.filter(
     (pickup: any) => pickup.status === "requested"
@@ -420,7 +424,259 @@ function RecyclerDashboard({
         </View>
       )}
 
+      {/* Recent Recycling Activity */}
+      {completedPickups.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.recyclingHeader}>
+            <View style={styles.recyclingIconContainer}>
+              <MaterialCommunityIcons name="leaf" size={24} color="#10b981" />
+            </View>
+            <View style={styles.recyclingTitleContainer}>
+              <Text style={styles.recyclingTitle}>Recycling History</Text>
+              <Text style={styles.recyclingSubtitle}>
+                {completedPickups.length} items successfully recycled
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.recyclingList}>
+            {completedPickups.slice(0, 5).map((pickup: any, index: number) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.recyclingItem}
+                onPress={() => {
+                  setSelectedPickup(pickup);
+                  setModalVisible(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.recyclingItemIcon,
+                    {
+                      backgroundColor:
+                        getMaterialColor(pickup.material_code) + "20",
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={getMaterialIcon(pickup.material_code)}
+                    size={24}
+                    color={getMaterialColor(pickup.material_code)}
+                  />
+                </View>
+                <View style={styles.recyclingItemContent}>
+                  <Text style={styles.recyclingItemMaterial}>
+                    {pickup.material_code.charAt(0).toUpperCase() +
+                      pickup.material_code.slice(1)}
+                  </Text>
+                  <Text style={styles.recyclingItemWeight}>
+                    {pickup.weight_kg} kg
+                  </Text>
+                  <Text style={styles.recyclingItemDate}>
+                    {new Date(
+                      pickup.updated_at || pickup.created_at
+                    ).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                    ,{" "}
+                    {new Date(
+                      pickup.updated_at || pickup.created_at
+                    ).toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    })}
+                  </Text>
+                </View>
+                <View style={styles.recyclingItemCoins}>
+                  <MaterialCommunityIcons
+                    name="circle-multiple"
+                    size={16}
+                    color="#f59e0b"
+                  />
+                  <Text style={styles.recyclingItemCoinsText}>
+                    +{pickup.coins_awarded || 0}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={20}
+                  color="#10b981"
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
       <View style={{ height: 100 }} />
+
+      {/* Pickup Details Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.pickupModalOverlay}>
+          <View style={styles.pickupModalContent}>
+            <View style={styles.pickupModalHeader}>
+              <TouchableOpacity
+                style={styles.pickupModalCloseButton}
+                onPress={() => setModalVisible(false)}
+              >
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color="#6b7280"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {selectedPickup && (
+              <>
+                <View style={styles.modalMaterialSection}>
+                  <View
+                    style={[
+                      styles.modalMaterialIcon,
+                      {
+                        backgroundColor:
+                          getMaterialColor(selectedPickup.material_code) + "20",
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={getMaterialIcon(selectedPickup.material_code)}
+                      size={48}
+                      color={getMaterialColor(selectedPickup.material_code)}
+                    />
+                  </View>
+                  <Text style={styles.modalMaterialTitle}>
+                    {selectedPickup.material_code.toUpperCase()}
+                  </Text>
+                  <View style={styles.modalWeightContainer}>
+                    <MaterialCommunityIcons
+                      name="weight-kilogram"
+                      size={20}
+                      color="#10b981"
+                    />
+                    <Text style={styles.modalWeight}>
+                      {selectedPickup.weight_kg} kg
+                    </Text>
+                  </View>
+                  <View style={styles.modalDateContainer}>
+                    <MaterialCommunityIcons
+                      name="clock"
+                      size={16}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.modalDate}>
+                      {new Date(
+                        selectedPickup.updated_at || selectedPickup.created_at
+                      ).toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.modalDetailsSection}>
+                  <Text style={styles.modalSectionTitle}>
+                    Collection Details
+                  </Text>
+
+                  <View style={styles.modalDetailRow}>
+                    <View style={styles.modalDetailIcon}>
+                      <MaterialCommunityIcons
+                        name="check-circle"
+                        size={20}
+                        color="#10b981"
+                      />
+                    </View>
+                    <View style={styles.modalDetailContent}>
+                      <Text style={styles.modalDetailLabel}>Status</Text>
+                      <Text style={styles.modalDetailValue}>Collected</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.modalDetailRow}>
+                    <View style={styles.modalDetailIcon}>
+                      <MaterialCommunityIcons
+                        name="calendar"
+                        size={20}
+                        color="#10b981"
+                      />
+                    </View>
+                    <View style={styles.modalDetailContent}>
+                      <Text style={styles.modalDetailLabel}>Collected On</Text>
+                      <Text style={styles.modalDetailValue}>
+                        {new Date(
+                          selectedPickup.updated_at || selectedPickup.created_at
+                        ).toLocaleDateString("en-US", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.modalDetailRow}>
+                    <View style={styles.modalDetailIcon}>
+                      <MaterialCommunityIcons
+                        name="clock"
+                        size={20}
+                        color="#10b981"
+                      />
+                    </View>
+                    <View style={styles.modalDetailContent}>
+                      <Text style={styles.modalDetailLabel}>Time</Text>
+                      <Text style={styles.modalDetailValue}>
+                        {new Date(
+                          selectedPickup.updated_at || selectedPickup.created_at
+                        ).toLocaleTimeString("en-US", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        })}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.modalDetailRow}>
+                    <View style={styles.modalDetailIcon}>
+                      <MaterialCommunityIcons
+                        name="circle-multiple"
+                        size={20}
+                        color="#f59e0b"
+                      />
+                    </View>
+                    <View style={styles.modalDetailContent}>
+                      <Text style={styles.modalDetailLabel}>Coins Earned</Text>
+                      <Text style={styles.modalDetailValue}>
+                        +{selectedPickup.coins_awarded || 0} coins
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={styles.modalCloseButtonText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -3074,5 +3330,217 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontWeight: "600",
     textAlign: "right",
+  },
+
+  // Recycling History Styles
+  recyclingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  recyclingIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  recyclingTitleContainer: {
+    flex: 1,
+  },
+  recyclingTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#15803d",
+    marginBottom: 4,
+  },
+  recyclingSubtitle: {
+    fontSize: 14,
+    color: "#6b7280",
+    fontWeight: "500",
+  },
+  recyclingList: {
+    gap: 8,
+  },
+  recyclingItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: "#f3f4f6",
+  },
+  recyclingItemIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  recyclingItemContent: {
+    flex: 1,
+  },
+  recyclingItemMaterial: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 2,
+  },
+  recyclingItemWeight: {
+    fontSize: 13,
+    color: "#6b7280",
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  recyclingItemDate: {
+    fontSize: 12,
+    color: "#9ca3af",
+    fontWeight: "500",
+  },
+  recyclingItemCoins: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#fef3c7",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  recyclingItemCoinsText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#f59e0b",
+  },
+
+  // Modal Styles for Pickup Details
+  pickupModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  pickupModalContent: {
+    backgroundColor: "#ffffff",
+    borderRadius: 24,
+    width: "90%",
+    maxHeight: "80%",
+    overflow: "hidden",
+  },
+  pickupModalHeader: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    padding: 16,
+    paddingBottom: 8,
+  },
+  pickupModalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalMaterialSection: {
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  modalMaterialIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalMaterialTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 12,
+  },
+  modalWeightContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  modalWeight: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#10b981",
+  },
+  modalDateContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  modalDate: {
+    fontSize: 14,
+    color: "#6b7280",
+    fontWeight: "500",
+  },
+  modalDetailsSection: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  modalSectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 16,
+  },
+  modalDetailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
+  },
+  modalDetailIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  modalDetailContent: {
+    flex: 1,
+  },
+  modalDetailLabel: {
+    fontSize: 13,
+    color: "#6b7280",
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  modalDetailValue: {
+    fontSize: 15,
+    color: "#111827",
+    fontWeight: "600",
+  },
+  modalCloseButton: {
+    backgroundColor: "#10b981",
+    marginHorizontal: 24,
+    marginBottom: 24,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  modalCloseButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#ffffff",
   },
 });
