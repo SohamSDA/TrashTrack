@@ -16,11 +16,7 @@ const getStorage = () => {
   return AsyncStorage;
 };
 
-/**
- * Database types – mirror your Supabase schema
- * (profiles, pickups). Keep this as the single
- * source of truth for types across the app.
- */
+
 export type Database = {
   public: {
     Tables: {

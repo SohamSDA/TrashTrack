@@ -66,6 +66,9 @@ type AuthState = {
   switchRole: (
     newRole: "recycler" | "collector" | "admin"
   ) => Promise<{ ok: boolean; error?: string }>;
+
+  // Fix existing pickups - award coins retroactively
+  fixExistingPickups: () => Promise<{ ok: boolean; error?: string }>;
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -271,9 +274,45 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     try {
+      // First get the pickup details to calculate coins
+      const { data: pickupData, error: fetchError } = await supabase
+        .from("pickups")
+        .select("*")
+        .eq("id", pickupId)
+        .single();
+
+      if (fetchError || !pickupData) {
+        console.error("markCollected: Error fetching pickup:", fetchError);
+        return { ok: false, error: "Pickup not found" };
+      }
+
+      // Calculate coins using material classes
+      let calculatedCoins = 0;
+      try {
+        const { materialFactory } = await import("./domain/materials");
+        const materialCode = pickupData.material_code.toUpperCase() as
+          | "PAPER"
+          | "PLASTIC"
+          | "IRON";
+        const material = materialFactory(materialCode);
+        calculatedCoins = material.coinsFor(pickupData.weight_kg);
+        console.log(
+          `Calculated ${calculatedCoins} coins for ${materialCode} ${pickupData.weight_kg}kg`
+        );
+      } catch (err) {
+        console.error("Error calculating coins:", err);
+        // Fallback calculation
+        const rates = { paper: 2, plastic: 3, iron: 6 };
+        const rate = rates[pickupData.material_code as keyof typeof rates] || 2;
+        calculatedCoins = Math.round(rate * pickupData.weight_kg);
+      }
+
+      const finalCoins =
+        coins_awarded !== null ? coins_awarded : calculatedCoins;
+
       const updateData = {
         status: "collected",
-        coins_awarded,
+        coins_awarded: finalCoins,
         collector_id,
         updated_at: new Date().toISOString(),
       };
@@ -282,7 +321,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .from("pickups")
         .update(updateData as any)
         .eq("id", pickupId)
-        .select(); // Add select to get back the updated row
+        .select();
 
       if (error) {
         console.error("markCollected: Supabase error:", error);
@@ -297,6 +336,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           ok: false,
           error: "Pickup not found or no permission to update",
         };
+      }
+
+      // Award coins to the user
+      if (finalCoins > 0 && pickupData.user_id) {
+        console.log(
+          `Awarding ${finalCoins} coins to user ${pickupData.user_id}`
+        );
+        const coinResult = await get().updateUserCoins(
+          pickupData.user_id,
+          finalCoins
+        );
+        if (!coinResult.ok) {
+          console.error("Failed to award coins:", coinResult.error);
+        }
       }
 
       console.log("markCollected: Successfully updated pickup", pickupId);
@@ -537,6 +590,117 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (err: any) {
       console.error("Error switching role:", err);
       return { ok: false, error: "Failed to switch role" };
+    }
+  },
+
+  // Fix existing pickups - award coins retroactively
+  fixExistingPickups: async () => {
+    try {
+      console.log("Starting fixExistingPickups...");
+
+      // First, reset all user coins to 0 to recalculate properly
+      const { error: resetError } = await supabase
+        .from("profiles")
+        .update({ coins_balance: 0 })
+        .eq("role", "recycler");
+
+      if (resetError) {
+        console.error("Error resetting coins:", resetError);
+        return { ok: false, error: resetError.message };
+      }
+
+      console.log("Reset all recycler coins to 0");
+
+      // Get all collected pickups (regardless of coins_awarded status)
+      const { data: pickups, error: fetchError } = await supabase
+        .from("pickups")
+        .select("*")
+        .eq("status", "collected");
+
+      if (fetchError) {
+        console.error("Error fetching pickups for fix:", fetchError);
+        return { ok: false, error: fetchError.message };
+      }
+
+      if (!pickups || pickups.length === 0) {
+        console.log("No collected pickups found");
+        return { ok: true };
+      }
+
+      console.log(`Found ${pickups.length} collected pickups to process`);
+
+      // Group pickups by user to calculate total coins per user
+      const userCoins = new Map<string, number>();
+
+      // Process each pickup and calculate coins
+      for (const pickup of pickups) {
+        try {
+          // Calculate coins using material classes
+          const { materialFactory } = await import("./domain/materials");
+          const materialCode = pickup.material_code.toUpperCase() as
+            | "PAPER"
+            | "PLASTIC"
+            | "IRON";
+          const material = materialFactory(materialCode);
+          const calculatedCoins = material.coinsFor(pickup.weight_kg);
+
+          console.log(
+            `Processing pickup ${pickup.id}: ${materialCode} ${pickup.weight_kg}kg = ${calculatedCoins} coins`
+          );
+
+          // Update pickup with calculated coins (if not already set)
+          if (pickup.coins_awarded !== calculatedCoins) {
+            const { error: updateError } = await supabase
+              .from("pickups")
+              .update({
+                coins_awarded: calculatedCoins,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", pickup.id);
+
+            if (updateError) {
+              console.error(`Error updating pickup ${pickup.id}:`, updateError);
+              continue;
+            }
+          }
+
+          // Add to user's total coins
+          const currentTotal = userCoins.get(pickup.user_id) || 0;
+          userCoins.set(pickup.user_id, currentTotal + calculatedCoins);
+        } catch (err) {
+          console.error(`Error processing pickup ${pickup.id}:`, err);
+        }
+      }
+
+      // Update each user's total coins in profiles table
+      for (const [userId, totalCoins] of userCoins.entries()) {
+        console.log(`Setting user ${userId} total coins to ${totalCoins}`);
+
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({
+            coins_balance: totalCoins,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", userId);
+
+        if (updateError) {
+          console.error(
+            `Failed to update coins for user ${userId}:`,
+            updateError
+          );
+        } else {
+          console.log(
+            `Successfully set ${totalCoins} coins for user ${userId}`
+          );
+        }
+      }
+
+      console.log("Finished recalculating all coins correctly");
+      return { ok: true };
+    } catch (err: any) {
+      console.error("Error in fixExistingPickups:", err);
+      return { ok: false, error: "Failed to fix existing pickups" };
     }
   },
 }));

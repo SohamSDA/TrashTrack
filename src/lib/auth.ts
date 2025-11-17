@@ -17,7 +17,6 @@ export class AuthService {
       email,
       password,
       options: {
-        // user_metadata: this is fine; you can read it later via auth.getUser()
         data: {
           full_name: fullName,
           role: role,
@@ -27,15 +26,7 @@ export class AuthService {
 
     console.log("SignUp result:", { data: data?.user?.user_metadata, error });
 
-    // If you do NOT have a DB trigger to create profiles, you can eagerly upsert:
-    // if (!error && data.user) {
-    //   await supabase.from("profiles").upsert({
-    //     id: data.user.id,
-    //     full_name: fullName,
-    //     role: "recycler",
-    //     coins_balance: 0,
-    //   });
-    // }
+   
 
     return { data, error };
   }
@@ -58,10 +49,7 @@ export class AuthService {
     return data.user ?? null;
   }
 
-  /**
-   * Returns the profile row or creates one if not found.
-   * Uses upsert to handle race conditions safely.
-   */
+  
   async getProfile(userId: string): Promise<Profile | null> {
     try {
       // First try to get existing profile

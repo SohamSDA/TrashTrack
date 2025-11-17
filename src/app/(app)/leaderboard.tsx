@@ -21,7 +21,7 @@ type LeaderboardStats = {
 };
 
 export default function Leaderboard() {
-  const { user, profile } = useAuthStore();
+  const { user, profile, fixExistingPickups } = useAuthStore();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [stats, setStats] = useState<LeaderboardStats>({
     totalRecyclers: 0,
@@ -31,16 +31,39 @@ export default function Leaderboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fixingPickups, setFixingPickups] = useState(false);
+
+  // Fix existing pickups (for testing)
+  const handleFixPickups = async () => {
+    setFixingPickups(true);
+    try {
+      const result = await fixExistingPickups();
+      if (result.ok) {
+        console.log("Successfully reset and recalculated all coins");
+        // Force reload leaderboard to see changes
+        setLeaderboard([]);
+        setStats({ totalRecyclers: 0, totalCoins: 0, totalPickups: 0 });
+        await loadLeaderboard();
+      } else {
+        console.error("Failed to reset coins:", result.error);
+      }
+    } catch (err) {
+      console.error("Error resetting coins:", err);
+    } finally {
+      setFixingPickups(false);
+    }
+  };
 
   const loadLeaderboard = async () => {
     try {
       setError(null);
 
-      // Load leaderboard data with additional stats
+      // Load leaderboard data with additional stats - ONLY RECYCLERS
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("id, full_name, coins_balance")
-        .order("coins_balance", { ascending: false })
+        .select("id, full_name, coins_balance, role")
+        .eq("role", "recycler") // Only get recyclers
+        .order("coins_balance", { ascending: false, nullsFirst: false })
         .limit(100);
 
       if (profileError) {
@@ -48,6 +71,8 @@ export default function Leaderboard() {
         setError("Failed to load leaderboard data");
         return;
       }
+
+      console.log("Profile data loaded:", profileData?.length, "recyclers");
 
       // Get pickup statistics for each user
       const { data: pickupData, error: pickupError } = await supabase
@@ -73,25 +98,46 @@ export default function Leaderboard() {
 
       // Combine profile and pickup data
       const leaderboardData = (profileData || [])
-        .filter((entry) => entry.coins_balance > 0 || userStats.has(entry.id)) // Only show users with activity
-        .map((entry, index) => {
+        .map((entry: any) => {
           const userPickupStats = userStats.get(entry.id) || {
             count: 0,
             weight: 0,
           };
           return {
             ...entry,
-            rank: index + 1,
             total_pickups: userPickupStats.count,
             total_weight: Math.round(userPickupStats.weight * 100) / 100, // Round to 2 decimal places
             coins_balance: entry.coins_balance || 0,
             full_name: entry.full_name || "Anonymous User",
           };
-        });
+        })
+        .filter((entry: any) => {
+          const hasCoins = (entry.coins_balance || 0) >= 0;
+          const hasPickups = userStats.has(entry.id);
+          return hasCoins; // Show all recyclers
+        }) // Show all recyclers
+        .sort((a: any, b: any) => {
+          // Primary sort: coins (higher first)
+          const coinsDiff = (b.coins_balance || 0) - (a.coins_balance || 0);
+          if (coinsDiff !== 0) return coinsDiff;
+
+          // Secondary sort: total pickups (more first)
+          const pickupStatsA = userStats.get(a.id) || { count: 0, weight: 0 };
+          const pickupStatsB = userStats.get(b.id) || { count: 0, weight: 0 };
+          const pickupsDiff = pickupStatsB.count - pickupStatsA.count;
+          if (pickupsDiff !== 0) return pickupsDiff;
+
+          // Tertiary sort: total weight (more first)
+          return pickupStatsB.weight - pickupStatsA.weight;
+        })
+        .map((entry: any, index: number) => ({
+          ...entry,
+          rank: index + 1,
+        }));
 
       // Calculate overall stats
       const totalCoins = leaderboardData.reduce(
-        (sum, entry) => sum + entry.coins_balance,
+        (sum: number, entry: any) => sum + (entry.coins_balance || 0),
         0
       );
       const totalPickups = pickupData?.length || 0;
@@ -102,6 +148,8 @@ export default function Leaderboard() {
         totalCoins,
         totalPickups,
       });
+
+      console.log("Final leaderboard data:", leaderboardData.length, "entries");
     } catch (error) {
       console.error("Exception loading leaderboard:", error);
       setError("An unexpected error occurred");
@@ -238,7 +286,7 @@ export default function Leaderboard() {
                       color="#fbbf24"
                     />
                     <Text style={styles.currentUserStatValue}>
-                      {currentUserEntry.coins_balance}
+                      {currentUserEntry.coins_balance || 0}
                     </Text>
                     <Text style={styles.currentUserStatLabel}>coins</Text>
                   </View>
@@ -337,10 +385,10 @@ export default function Leaderboard() {
                             color="#fbbf24"
                           />
                           <Text style={styles.coinsText}>
-                            {entry.coins_balance} coins
+                            {entry.coins_balance || 0} coins
                           </Text>
                         </View>
-                        {entry.total_pickups > 0 && (
+                        {(entry.total_pickups ?? 0) > 0 && (
                           <View style={styles.pickupsRow}>
                             <MaterialCommunityIcons
                               name="package-variant"
@@ -348,11 +396,11 @@ export default function Leaderboard() {
                               color="#10b981"
                             />
                             <Text style={styles.pickupsText}>
-                              {entry.total_pickups} pickups
+                              {entry.total_pickups ?? 0} pickups
                             </Text>
                           </View>
                         )}
-                        {entry.total_weight > 0 && (
+                        {(entry.total_weight ?? 0) > 0 && (
                           <View style={styles.weightRow}>
                             <MaterialCommunityIcons
                               name="weight-kilogram"
@@ -360,7 +408,7 @@ export default function Leaderboard() {
                               color="#6366f1"
                             />
                             <Text style={styles.weightText}>
-                              {entry.total_weight}kg
+                              {entry.total_weight ?? 0}kg
                             </Text>
                           </View>
                         )}
@@ -388,7 +436,7 @@ export default function Leaderboard() {
             );
           })
         )}
-        
+
         {/* Bottom spacing for easier scrolling */}
         <View style={{ height: 80 }} />
       </ScrollView>
@@ -667,5 +715,27 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     fontWeight: "700",
+  },
+  debugCard: {
+    backgroundColor: "#fff3cd",
+    borderRadius: 16,
+    marginBottom: 16,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#ffc107",
+  },
+  debugTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#856404",
+    marginBottom: 8,
+  },
+  debugText: {
+    fontSize: 14,
+    color: "#856404",
+    marginBottom: 12,
+  },
+  debugButton: {
+    backgroundColor: "#ffc107",
   },
 });
