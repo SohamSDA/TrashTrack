@@ -2,12 +2,7 @@ import { useAuthStore } from "@/lib/authStore";
 import { supabase } from "@/lib/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { Card, Text } from "react-native-paper";
 
 type LeaderboardEntry = {
@@ -15,36 +10,101 @@ type LeaderboardEntry = {
   full_name: string;
   coins_balance: number;
   rank: number;
+  total_pickups?: number;
+  total_weight?: number;
+};
+
+type LeaderboardStats = {
+  totalRecyclers: number;
+  totalCoins: number;
+  totalPickups: number;
 };
 
 export default function Leaderboard() {
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [stats, setStats] = useState<LeaderboardStats>({
+    totalRecyclers: 0,
+    totalCoins: 0,
+    totalPickups: 0,
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadLeaderboard = async () => {
     try {
-      const { data, error } = await supabase
+      setError(null);
+
+      // Load leaderboard data with additional stats
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("id, full_name, coins_balance")
-        .eq("role", "recycler")
         .order("coins_balance", { ascending: false })
-        .limit(50);
+        .limit(100);
 
-      if (error) {
-        console.error("Error loading leaderboard:", error);
+      if (profileError) {
+        console.error("Error loading leaderboard:", profileError);
+        setError("Failed to load leaderboard data");
         return;
       }
 
-      const leaderboardData = (data || []).map((entry, index) => ({
-        ...entry,
-        rank: index + 1,
-      }));
+      // Get pickup statistics for each user
+      const { data: pickupData, error: pickupError } = await supabase
+        .from("pickups")
+        .select("user_id, weight_kg, status")
+        .in("status", ["collected", "completed"]);
+
+      if (pickupError) {
+        console.warn("Error loading pickup stats:", pickupError);
+      }
+
+      // Calculate user statistics
+      const userStats = new Map();
+      if (pickupData) {
+        pickupData.forEach((pickup) => {
+          const userId = pickup.user_id;
+          const current = userStats.get(userId) || { count: 0, weight: 0 };
+          current.count += 1;
+          current.weight += Number(pickup.weight_kg) || 0;
+          userStats.set(userId, current);
+        });
+      }
+
+      // Combine profile and pickup data
+      const leaderboardData = (profileData || [])
+        .filter((entry) => entry.coins_balance > 0 || userStats.has(entry.id)) // Only show users with activity
+        .map((entry, index) => {
+          const userPickupStats = userStats.get(entry.id) || {
+            count: 0,
+            weight: 0,
+          };
+          return {
+            ...entry,
+            rank: index + 1,
+            total_pickups: userPickupStats.count,
+            total_weight: Math.round(userPickupStats.weight * 100) / 100, // Round to 2 decimal places
+            coins_balance: entry.coins_balance || 0,
+            full_name: entry.full_name || "Anonymous User",
+          };
+        });
+
+      // Calculate overall stats
+      const totalCoins = leaderboardData.reduce(
+        (sum, entry) => sum + entry.coins_balance,
+        0
+      );
+      const totalPickups = pickupData?.length || 0;
 
       setLeaderboard(leaderboardData);
+      setStats({
+        totalRecyclers: leaderboardData.length,
+        totalCoins,
+        totalPickups,
+      });
     } catch (error) {
       console.error("Exception loading leaderboard:", error);
+      setError("An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -102,6 +162,60 @@ export default function Leaderboard() {
           </Card.Content>
         </Card>
 
+        {/* Stats Overview */}
+        <Card style={styles.statsCard}>
+          <Card.Content>
+            <Text style={styles.statsTitle}>Community Stats</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statItem}>
+                <MaterialCommunityIcons
+                  name="account-group"
+                  size={24}
+                  color="#3b82f6"
+                />
+                <Text style={styles.statNumber}>{stats.totalRecyclers}</Text>
+                <Text style={styles.statLabel}>Recyclers</Text>
+              </View>
+              <View style={styles.statItem}>
+                <MaterialCommunityIcons
+                  name="circle-multiple"
+                  size={24}
+                  color="#fbbf24"
+                />
+                <Text style={styles.statNumber}>
+                  {stats.totalCoins.toLocaleString()}
+                </Text>
+                <Text style={styles.statLabel}>Total Coins</Text>
+              </View>
+              <View style={styles.statItem}>
+                <MaterialCommunityIcons
+                  name="package-variant"
+                  size={24}
+                  color="#10b981"
+                />
+                <Text style={styles.statNumber}>{stats.totalPickups}</Text>
+                <Text style={styles.statLabel}>Pickups Done</Text>
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* Error Display */}
+        {error && (
+          <Card style={styles.errorCard}>
+            <Card.Content>
+              <View style={styles.errorContent}>
+                <MaterialCommunityIcons
+                  name="alert-circle"
+                  size={24}
+                  color="#dc2626"
+                />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            </Card.Content>
+          </Card>
+        )}
+
         {/* Current User Rank */}
         {currentUserEntry && (
           <Card style={styles.currentUserCard}>
@@ -112,16 +226,33 @@ export default function Leaderboard() {
                   <Text style={styles.currentUserRank}>
                     #{currentUserEntry.rank}
                   </Text>
+                  <Text style={styles.currentUserSubtext}>
+                    of {leaderboard.length} recyclers
+                  </Text>
                 </View>
                 <View style={styles.currentUserRight}>
-                  <MaterialCommunityIcons
-                    name="circle-multiple"
-                    size={24}
-                    color="#fbbf24"
-                  />
-                  <Text style={styles.currentUserCoins}>
-                    {currentUserEntry.coins_balance}
-                  </Text>
+                  <View style={styles.currentUserStat}>
+                    <MaterialCommunityIcons
+                      name="circle-multiple"
+                      size={20}
+                      color="#fbbf24"
+                    />
+                    <Text style={styles.currentUserStatValue}>
+                      {currentUserEntry.coins_balance}
+                    </Text>
+                    <Text style={styles.currentUserStatLabel}>coins</Text>
+                  </View>
+                  <View style={styles.currentUserStat}>
+                    <MaterialCommunityIcons
+                      name="package-variant"
+                      size={20}
+                      color="#10b981"
+                    />
+                    <Text style={styles.currentUserStatValue}>
+                      {currentUserEntry.total_pickups || 0}
+                    </Text>
+                    <Text style={styles.currentUserStatLabel}>pickups</Text>
+                  </View>
                 </View>
               </View>
             </Card.Content>
@@ -195,18 +326,44 @@ export default function Leaderboard() {
                           isCurrentUser && styles.currentUserName,
                         ]}
                       >
-                        {entry.full_name || "Anonymous"}
+                        {entry.full_name}
                         {isCurrentUser && " (You)"}
                       </Text>
-                      <View style={styles.coinsRow}>
-                        <MaterialCommunityIcons
-                          name="circle-multiple"
-                          size={16}
-                          color="#fbbf24"
-                        />
-                        <Text style={styles.coinsText}>
-                          {entry.coins_balance} coins
-                        </Text>
+                      <View style={styles.userStatsRow}>
+                        <View style={styles.coinsRow}>
+                          <MaterialCommunityIcons
+                            name="circle-multiple"
+                            size={16}
+                            color="#fbbf24"
+                          />
+                          <Text style={styles.coinsText}>
+                            {entry.coins_balance} coins
+                          </Text>
+                        </View>
+                        {entry.total_pickups > 0 && (
+                          <View style={styles.pickupsRow}>
+                            <MaterialCommunityIcons
+                              name="package-variant"
+                              size={14}
+                              color="#10b981"
+                            />
+                            <Text style={styles.pickupsText}>
+                              {entry.total_pickups} pickups
+                            </Text>
+                          </View>
+                        )}
+                        {entry.total_weight > 0 && (
+                          <View style={styles.weightRow}>
+                            <MaterialCommunityIcons
+                              name="weight-kilogram"
+                              size={14}
+                              color="#6366f1"
+                            />
+                            <Text style={styles.weightText}>
+                              {entry.total_weight}kg
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     </View>
                   </View>
@@ -231,6 +388,9 @@ export default function Leaderboard() {
             );
           })
         )}
+        
+        {/* Bottom spacing for easier scrolling */}
+        <View style={{ height: 80 }} />
       </ScrollView>
     </View>
   );
@@ -270,6 +430,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6b7280",
   },
+  statsCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    marginBottom: 16,
+    elevation: 2,
+  },
+  statsTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#111827",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  statsGrid: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  statItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111827",
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: "#6b7280",
+    fontWeight: "500",
+  },
+  errorCard: {
+    backgroundColor: "#fef2f2",
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#fca5a5",
+  },
+  errorContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#dc2626",
+    fontWeight: "500",
+  },
   currentUserCard: {
     backgroundColor: "#dcfce7",
     borderRadius: 16,
@@ -297,10 +508,31 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#16a34a",
   },
+  currentUserSubtext: {
+    fontSize: 12,
+    color: "#15803d",
+    fontWeight: "500",
+    marginTop: 2,
+  },
   currentUserRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 16,
+  },
+  currentUserStat: {
+    alignItems: "center",
+    minWidth: 60,
+  },
+  currentUserStatValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    marginTop: 4,
+  },
+  currentUserStatLabel: {
+    fontSize: 10,
+    color: "#6b7280",
+    fontWeight: "500",
   },
   currentUserCoins: {
     fontSize: 24,
@@ -386,11 +618,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#111827",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   currentUserName: {
     color: "#16a34a",
     fontWeight: "700",
+  },
+  userStatsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   coinsRow: {
     flexDirection: "row",
@@ -401,6 +638,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6b7280",
     fontWeight: "600",
+  },
+  pickupsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  pickupsText: {
+    fontSize: 12,
+    color: "#059669",
+    fontWeight: "500",
+  },
+  weightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  weightText: {
+    fontSize: 12,
+    color: "#4338ca",
+    fontWeight: "500",
   },
   badge: {
     paddingHorizontal: 12,

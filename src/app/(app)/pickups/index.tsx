@@ -9,6 +9,5 @@ export default function PickupsList() {
     return <CollectorEarnings />;
   }
 
-  // Show recycler pickups view for recyclers
   return <RecyclerPickups />;
 }

@@ -3050,7 +3050,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.05)",
     marginLeft: 60,
   },
-  // Collection Details Modal Styles
   collectionDetailsCard: {
     backgroundColor: "#1e293b",
     borderRadius: 16,
